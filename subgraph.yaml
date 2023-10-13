@@ -1,0 +1,342 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: MarketFactory
+    network: arbitrum-one
+    source:
+      abi: MarketFactory
+      address: "0xDaD8A103473dfd47F90168A0E46766ed48e26EC7"
+      startBlock: 135921706
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Initialized
+        - InstanceRegistered
+        - MarketCreated
+        - OperatorUpdated
+        - OwnerUpdated
+        - ParameterUpdated
+        - Paused
+        - PauserUpdated
+        - PendingOwnerUpdated
+        - Unpaused
+      abis:
+        - name: MarketFactory
+          file: ./abis/MarketFactory.json
+      eventHandlers:
+        - event: Initialized(uint256)
+          handler: handleInitialized
+        - event: InstanceRegistered(indexed address)
+          handler: handleInstanceRegistered
+        - event: MarketCreated(indexed address,(address,address,address))
+          handler: handleMarketCreated
+        - event: OperatorUpdated(indexed address,indexed address,bool)
+          handler: handleOperatorUpdated
+        - event: OwnerUpdated(indexed address)
+          handler: handleOwnerUpdated
+        - event: ParameterUpdated((uint256,uint256,uint256,uint256,uint256,uint256,uint256))
+          handler: handleParameterUpdated
+        - event: Paused()
+          handler: handlePaused
+        - event: PauserUpdated(indexed address)
+          handler: handlePauserUpdated
+        - event: PendingOwnerUpdated(indexed address)
+          handler: handlePendingOwnerUpdated
+        - event: Unpaused()
+          handler: handleUnpaused
+      file: ./src/market-factory.ts
+  - kind: ethereum
+    name: OracleFactory
+    network: arbitrum-one
+    source:
+      abi: OracleFactory
+      address: "0x8CDa59615C993f925915D3eb4394BAdB3feEF413"
+      startBlock: 135921387
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - CallerAuthorized
+        - FactoryRegistered
+        - OracleFactoryInitialized
+        - OracleFactoryInstanceRegistered
+        - MaxClaimUpdated
+        - OracleCreated
+        - OracleFactoryOwnerUpdated
+        - OracleFactoryPaused
+        - OracleFactoryPauserUpdated
+        - OracleFactoryPendingOwnerUpdated
+        - OracleFactoryUnpaused
+      abis:
+        - name: OracleFactory
+          file: ./abis/OracleFactory.json
+      eventHandlers:
+        - event: CallerAuthorized(address)
+          handler: handleCallerAuthorized
+        - event: FactoryRegistered(address)
+          handler: handleFactoryRegistered
+        - event: Initialized(uint256)
+          handler: handleInitialized
+        - event: InstanceRegistered(indexed address)
+          handler: handleInstanceRegistered
+        - event: MaxClaimUpdated(uint256)
+          handler: handleMaxClaimUpdated
+        - event: OracleCreated(indexed address,indexed bytes32)
+          handler: handleOracleCreated
+        - event: OwnerUpdated(indexed address)
+          handler: handleOwnerUpdated
+        - event: Paused()
+          handler: handlePaused
+        - event: PauserUpdated(indexed address)
+          handler: handlePauserUpdated
+        - event: PendingOwnerUpdated(indexed address)
+          handler: handlePendingOwnerUpdated
+        - event: Unpaused()
+          handler: handleUnpaused
+      file: ./src/oracle-factory.ts
+  - kind: ethereum
+    name: VaultFactory
+    network: arbitrum-one
+    source:
+      abi: VaultFactory
+      address: "0xad3565680aEcEe27A39249D8c2D55dAc79BE5Ad0"
+      startBlock: 135921947
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - VaultFactoryInitialized
+        - VaultFactoryInstanceRegistered
+        - VaultFactoryOperatorUpdated
+        - VaultFactoryOwnerUpdated
+        - VaultFactoryPaused
+        - VaultFactoryPauserUpdated
+        - VaultFactoryPendingOwnerUpdated
+        - VaultFactoryUnpaused
+        - VaultCreated
+      abis:
+        - name: VaultFactory
+          file: ./abis/VaultFactory.json
+      eventHandlers:
+        - event: Initialized(uint256)
+          handler: handleInitialized
+        - event: InstanceRegistered(indexed address)
+          handler: handleInstanceRegistered
+        - event: OperatorUpdated(indexed address,indexed address,bool)
+          handler: handleOperatorUpdated
+        - event: OwnerUpdated(indexed address)
+          handler: handleOwnerUpdated
+        - event: Paused()
+          handler: handlePaused
+        - event: PauserUpdated(indexed address)
+          handler: handlePauserUpdated
+        - event: PendingOwnerUpdated(indexed address)
+          handler: handlePendingOwnerUpdated
+        - event: Unpaused()
+          handler: handleUnpaused
+        - event: VaultCreated(indexed address,indexed address,address)
+          handler: handleVaultCreated
+      file: ./src/vault-factory.ts
+  - kind: ethereum
+    name: MultiInvoker
+    network: arbitrum-one
+    source:
+      abi: MultiInvoker
+      address: "0x431603567EcBb4aa1Ce5a4fdBe5554cAEa658832"
+      startBlock: 135921999
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FeeCharged
+        - MultiInvokerInitialized
+        - KeeperCall
+        - KeeperFeeCharged
+        - OrderCancelled
+        - OrderExecuted
+        - OrderPlaced
+      abis:
+        - name: MultiInvoker
+          file: ./abis/MultiInvoker.json
+      eventHandlers:
+        - event: FeeCharged(indexed address,indexed address,uint256)
+          handler: handleFeeCharged
+        - event: Initialized(uint256)
+          handler: handleInitialized
+        - event: KeeperCall(indexed address,uint256,uint256,uint256,uint256)
+          handler: handleKeeperCall
+        - event: KeeperFeeCharged(indexed address,indexed address,indexed address,uint256)
+          handler: handleKeeperFeeCharged
+        - event: OrderCancelled(indexed address,indexed address,uint256)
+          handler: handleOrderCancelled
+        - event: OrderExecuted(indexed address,indexed address,uint256,uint256)
+          handler: handleOrderExecuted
+        - event: OrderPlaced(indexed address,indexed address,indexed
+            uint256,(uint8,int8,uint256,int256,int256))
+          handler: handleOrderPlaced
+      file: ./src/multi-invoker.ts
+  - kind: ethereum
+    name: PythFactory
+    network: arbitrum-one
+    source:
+      abi: PythFactory
+      address: "0x9F35B78c6502e2B19D45Dc275f24462B0fa577B4"
+      startBlock: 135921431
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - GranularityUpdated
+        - PythFactoryInitialized
+        - PythFactoryInstanceRegistered
+        - PythFactoryOracleCreated
+        - PythFactoryOwnerUpdated
+        - PythFactoryPaused
+        - PythFactoryPauserUpdated
+        - PythFactoryPendingOwnerUpdated
+        - PythFactoryUnpaused
+      abis:
+        - name: PythFactory
+          file: ./abis/PythFactory.json
+      eventHandlers:
+        - event: GranularityUpdated(uint256,uint256)
+          handler: handleGranularityUpdated
+        - event: Initialized(uint256)
+          handler: handleInitialized
+        - event: InstanceRegistered(indexed address)
+          handler: handleInstanceRegistered
+        - event: OracleCreated(indexed address,indexed bytes32)
+          handler: handleOracleCreated
+        - event: OwnerUpdated(indexed address)
+          handler: handleOwnerUpdated
+        - event: Paused()
+          handler: handlePaused
+        - event: PauserUpdated(indexed address)
+          handler: handlePauserUpdated
+        - event: PendingOwnerUpdated(indexed address)
+          handler: handlePendingOwnerUpdated
+        - event: Unpaused()
+          handler: handleUnpaused
+      file: ./src/pyth-factory.ts
+templates:
+  - kind: ethereum
+    name: Market
+    network: arbitrum-one
+    source:
+      abi: Market
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AccountPositionProcessed
+        - BeneficiaryUpdated
+        - CoordinatorUpdated
+        - FeeClaimed
+        - MarketInitialized
+        - MarketParameterUpdated
+        - PositionProcessed
+        - RewardClaimed
+        - RewardUpdated
+        - RiskParameterUpdated
+        - Updated
+      abis:
+        - name: Market
+          file: ./abis/Market.json
+        - name: OracleProvider
+          file: ./abis/OracleProvider.json
+        - name: PayoffProvider
+          file: ./abis/PayoffProvider.json
+      eventHandlers:
+        - event: AccountPositionProcessed(indexed address,indexed uint256,indexed
+            uint256,uint256,uint256,(int256,uint256,uint256,uint256))
+          handler: handleAccountPositionProcessed
+        - event: BeneficiaryUpdated(address)
+          handler: handleBeneficiaryUpdated
+        - event: CoordinatorUpdated(address)
+          handler: handleCoordinatorUpdated
+        - event: FeeClaimed(indexed address,uint256)
+          handler: handleFeeClaimed
+        - event: Initialized(uint256)
+          handler: handleInitialized
+        - event: ParameterUpdated((uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,bool,bool,bool))
+          handler: handleParameterUpdated
+        - event: PositionProcessed(indexed uint256,indexed
+            uint256,uint256,uint256,(uint256,uint256,int256,int256,int256,uint256,int256,int256,int256,uint256,int256,int256,int256,uint256,uint256,uint256))
+          handler: handlePositionProcessed
+        - event: RewardClaimed(indexed address,uint256)
+          handler: handleRewardClaimed
+        - event: RewardUpdated(address)
+          handler: handleRewardUpdated
+        - event: RiskParameterUpdated((uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,(uint256,uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,bool))
+          handler: handleRiskParameterUpdated
+        - event: Updated(indexed address,indexed
+            address,uint256,uint256,uint256,uint256,int256,bool)
+          handler: handleUpdated
+          receipt: true
+      file: ./src/market.ts
+  - kind: ethereum
+    name: Vault
+    network: arbitrum-one
+    source:
+      abi: Vault
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - VaultInitialized
+        - MarketRegistered
+        - MarketUpdated
+        - VaultParameterUpdated
+        - Update
+      abis:
+        - name: Vault
+          file: ./abis/Vault.json
+      eventHandlers:
+        - event: Initialized(uint256)
+          handler: handleInitialized
+        - event: MarketRegistered(indexed uint256,address)
+          handler: handleMarketRegistered
+        - event: MarketUpdated(indexed uint256,uint256,uint256)
+          handler: handleMarketUpdated
+        - event: ParameterUpdated((uint256))
+          handler: handleParameterUpdated
+        - event: Updated(indexed address,indexed address,uint256,uint256,uint256,uint256)
+          handler: handleUpdate
+      file: ./src/vault.ts
+  - kind: ethereum
+    name: PythOracle
+    network: arbitrum-one
+    source:
+      abi: PythOracle
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - PythOracleInitialized
+        - PythOracleKeeperCall
+        - OracleProviderVersionFulfilled
+        - OracleProviderVersionRequested
+      abis:
+        - name: PythOracle
+          file: ./abis/PythOracle.json
+      eventHandlers:
+        - event: Initialized(uint256)
+          handler: handleInitialized
+        - event: KeeperCall(indexed address,uint256,uint256,uint256,uint256)
+          handler: handleKeeperCall
+        - event: OracleProviderVersionFulfilled(indexed uint256)
+          handler: handleOracleProviderVersionFulfilled
+        - event: OracleProviderVersionRequested(indexed uint256)
+          handler: handleOracleProviderVersionRequested
+      file: ./src/pyth-oracle.ts

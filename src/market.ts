@@ -1,0 +1,841 @@
+import { Address, BigInt, Bytes, ethereum } from '@graphprotocol/graph-ts'
+import {
+  AccountPositionProcessed as AccountPositionProcessedEvent,
+  BeneficiaryUpdated as BeneficiaryUpdatedEvent,
+  CoordinatorUpdated as CoordinatorUpdatedEvent,
+  FeeClaimed as FeeClaimedEvent,
+  Initialized as InitializedEvent,
+  Market,
+  ParameterUpdated as ParameterUpdatedEvent,
+  PositionProcessed as PositionProcessedEvent,
+  RewardClaimed as RewardClaimedEvent,
+  RewardUpdated as RewardUpdatedEvent,
+  RiskParameterUpdated as RiskParameterUpdatedEvent,
+  Updated as UpdatedEvent,
+} from '../generated/templates/Market/Market'
+import {
+  AccountPositionProcessed,
+  BeneficiaryUpdated,
+  CoordinatorUpdated,
+  FeeClaimed,
+  MarketAccumulator,
+  MarketGlobalPosition,
+  MarketAccountPosition,
+  MarketInitialized,
+  MarketParameterUpdated,
+  PositionProcessed,
+  RewardClaimed,
+  RewardUpdated,
+  RiskParameterUpdated,
+  Updated,
+  MarketAccountCheckpoint,
+} from '../generated/schema'
+import { accumulatorAccumulated, accumulatorIncrement, mul, div, fromBig18 } from './utils/big6Math'
+import { magnitude, price, side } from './utils/position'
+import { updateBucketedVolumes } from './utils/volume'
+import { KeeperCall } from '../generated/MultiInvoker/MultiInvoker'
+
+// event FeeCharged(address indexed account, address indexed to, UFixed6 amount)
+const INTERFACE_FEE_TOPIC = Bytes.fromHexString('0x945458c62aa39df7a4d87d6c4dbaaab7de5d870c9a1fe40e2b7571d84f158a8d')
+// event KeeperCall(address indexed sender, uint256 gasUsed, UFixed18 multiplier, uint256 buffer, UFixed18 keeperFee);
+const ORDER_FEE_TOPIC = Bytes.fromHexString('0xd7848cca80f0c7619e9c50ea855dd15779e356a791d0630001913eab6f7eaef7')
+
+export function handleAccountPositionProcessed(event: AccountPositionProcessedEvent): void {
+  let entity = new AccountPositionProcessed(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.account = event.params.account
+  entity.fromOracleVersion = event.params.fromOracleVersion
+  entity.toOracleVersion = event.params.toOracleVersion
+  entity.fromPosition = event.params.fromPosition
+  entity.toPosition = event.params.toPosition
+  entity.accumulationResult_collateralAmount = event.params.accumulationResult.collateralAmount
+  entity.accumulationResult_rewardAmount = event.params.accumulationResult.rewardAmount
+  entity.accumulationResult_positionFee = event.params.accumulationResult.positionFee
+  entity.accumulationResult_keeper = event.params.accumulationResult.keeper
+
+  // Price impact fee is the portion of the position fee that is paid to the market
+  const processEvent = PositionProcessed.load(positionProcessedID(event.address, event.params.fromOracleVersion))
+  const positionFee =
+    processEvent &&
+    processEvent.accumulationResult_positionFeeMaker
+      .plus(processEvent.accumulationResult_positionFeeFee)
+      .gt(BigInt.zero())
+      ? div(
+          processEvent.accumulationResult_positionFeeFee,
+          processEvent.accumulationResult_positionFeeMaker.plus(processEvent.accumulationResult_positionFeeFee),
+        )
+      : BigInt.zero()
+  entity.priceImpactFee = entity.accumulationResult_positionFee.minus(
+    mul(entity.accumulationResult_positionFee, positionFee),
+  )
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  const fromMarketAccumulator = MarketAccumulator.load(
+    marketAccumulatorId(event.address, event.params.fromOracleVersion),
+  )
+  const toMarketAccumulator = MarketAccumulator.load(marketAccumulatorId(event.address, event.params.toOracleVersion))
+  if (
+    (event.params.fromOracleVersion.gt(BigInt.zero()) && fromMarketAccumulator === null) ||
+    (event.params.toOracleVersion.gt(BigInt.zero()) && toMarketAccumulator === null)
+  )
+    throw new Error('Accumulator not found')
+  // Use the most recent valid position for size
+  const localPosition = getOrCreateMarketAccountPosition(
+    event.address,
+    event.params.account,
+    event.block.number,
+    event.block.timestamp,
+    event.params.toOracleVersion,
+  )
+  const magnitude_ = magnitude(localPosition.maker, localPosition.long, localPosition.short)
+  const side_ = side(localPosition.maker, localPosition.long, localPosition.short)
+
+  entity.side = side_
+  entity.size = magnitude_
+  entity.collateral = localPosition.collateral
+  if (fromMarketAccumulator !== null && toMarketAccumulator !== null) {
+    entity.accumulatedPnl = accumulatorAccumulated(toMarketAccumulator, fromMarketAccumulator, magnitude_, side_, 'pnl')
+    entity.accumulatedFunding = accumulatorAccumulated(
+      toMarketAccumulator,
+      fromMarketAccumulator,
+      magnitude_,
+      side_,
+      'funding',
+    )
+    entity.accumulatedInterest = accumulatorAccumulated(
+      toMarketAccumulator,
+      fromMarketAccumulator,
+      magnitude_,
+      side_,
+      'interest',
+    )
+    entity.accumulatedMakerPositionFee = accumulatorAccumulated(
+      toMarketAccumulator,
+      fromMarketAccumulator,
+      magnitude_,
+      side_,
+      'positionFee',
+    )
+    entity.accumulatedValue = accumulatorAccumulated(
+      toMarketAccumulator,
+      fromMarketAccumulator,
+      magnitude_,
+      side_,
+      'value',
+    )
+    entity.accumulatedReward = accumulatorAccumulated(
+      toMarketAccumulator,
+      fromMarketAccumulator,
+      magnitude_,
+      side_,
+      'reward',
+    )
+  } else {
+    entity.accumulatedPnl = BigInt.zero()
+    entity.accumulatedFunding = BigInt.zero()
+    entity.accumulatedInterest = BigInt.zero()
+    entity.accumulatedMakerPositionFee = BigInt.zero()
+    entity.accumulatedValue = BigInt.zero()
+    entity.accumulatedReward = BigInt.zero()
+  }
+
+  const toVersionData = Market.bind(event.address).versions(event.params.toOracleVersion)
+  if (toVersionData.valid) {
+    entity.toVersionValid = true
+    entity.toVersionPrice = price(event.address, event.params.toOracleVersion)
+    const updateEvent = Updated.load(updatedId(event.address, event.params.account, event.params.toOracleVersion))
+    if (updateEvent !== null) {
+      updateEvent.valid = true
+      updateEvent.price = entity.toVersionPrice
+      updateEvent.positionFee = entity.accumulationResult_positionFee
+      updateEvent.priceImpactFee = entity.priceImpactFee
+      updateEvent.save()
+    }
+  } else {
+    entity.toVersionValid = false
+    entity.toVersionPrice = BigInt.zero()
+  }
+
+  entity.save()
+
+  updateMarketAccountPosition(event, entity)
+}
+
+export function updateMarketAccountPosition(
+  event: AccountPositionProcessedEvent,
+  positionPrcessedEntity: AccountPositionProcessed,
+): void {
+  const market = event.address
+  const account = event.params.account
+  const version = event.params.toOracleVersion
+  let marketAccountPosition = getOrCreateMarketAccountPosition(
+    market,
+    account,
+    event.block.number,
+    event.block.timestamp,
+    version,
+  )
+
+  // Settlement
+  // Settle accumulationed values
+  marketAccountPosition.accumulatedPnl = marketAccountPosition.accumulatedPnl.plus(
+    positionPrcessedEntity.accumulatedPnl,
+  )
+  marketAccountPosition.accumulatedFunding = marketAccountPosition.accumulatedFunding.plus(
+    positionPrcessedEntity.accumulatedFunding,
+  )
+  marketAccountPosition.accumulatedInterest = marketAccountPosition.accumulatedInterest.plus(
+    positionPrcessedEntity.accumulatedInterest,
+  )
+  marketAccountPosition.accumulatedMakerPositionFee = marketAccountPosition.accumulatedMakerPositionFee.plus(
+    positionPrcessedEntity.accumulatedMakerPositionFee,
+  )
+  marketAccountPosition.accumulatedValue = marketAccountPosition.accumulatedValue.plus(
+    positionPrcessedEntity.accumulatedValue,
+  )
+  marketAccountPosition.accumulatedReward = marketAccountPosition.accumulatedReward.plus(
+    positionPrcessedEntity.accumulatedReward,
+  )
+  marketAccountPosition.accumulatedCollateral = marketAccountPosition.accumulatedCollateral.plus(
+    event.params.accumulationResult.collateralAmount,
+  )
+  marketAccountPosition.accumulatedKeeperFees = marketAccountPosition.accumulatedKeeperFees.plus(
+    event.params.accumulationResult.keeper,
+  )
+  marketAccountPosition.accumulatedPositionFees = marketAccountPosition.accumulatedPositionFees.plus(
+    event.params.accumulationResult.positionFee,
+  )
+  marketAccountPosition.accumulatedPriceImpactFees = marketAccountPosition.accumulatedPriceImpactFees.plus(
+    positionPrcessedEntity.priceImpactFee,
+  )
+
+  const weight = event.params.toOracleVersion.minus(event.params.fromOracleVersion)
+  marketAccountPosition.totalWeight = marketAccountPosition.totalWeight.plus(weight)
+  if (positionPrcessedEntity.collateral.gt(BigInt.zero())) {
+    marketAccountPosition.weightedFunding = marketAccountPosition.weightedFunding.plus(
+      div(mul(positionPrcessedEntity.accumulatedFunding, weight), positionPrcessedEntity.collateral),
+    )
+    marketAccountPosition.weightedInterest = marketAccountPosition.weightedInterest.plus(
+      div(mul(positionPrcessedEntity.accumulatedInterest, weight), positionPrcessedEntity.collateral),
+    )
+    marketAccountPosition.weightedMakerPositionFees = marketAccountPosition.weightedMakerPositionFees.plus(
+      div(mul(positionPrcessedEntity.accumulatedMakerPositionFee, weight), positionPrcessedEntity.collateral),
+    )
+  }
+
+  // Stamp latest collateral
+  // Collateral = netDeposits + accumulatedCollateral - accumulatedPositionFees - accumulatedKeeperFees
+  marketAccountPosition.collateral = marketAccountPosition.netDeposits
+    .plus(marketAccountPosition.accumulatedCollateral)
+    .minus(marketAccountPosition.accumulatedPositionFees)
+    .minus(marketAccountPosition.accumulatedKeeperFees)
+
+  // Update position if valid
+  const marketContract = Market.bind(market)
+  const toVersionData = marketContract.versions(version)
+  const currentMagnitude = magnitude(
+    marketAccountPosition.maker,
+    marketAccountPosition.long,
+    marketAccountPosition.short,
+  )
+  const currentSide = side(marketAccountPosition.maker, marketAccountPosition.long, marketAccountPosition.short)
+
+  if (event.params.fromPosition.lt(event.params.toPosition)) {
+    let toPosition = marketContract.pendingPositions(event.params.account, event.params.toPosition)
+    // If valid, transition the position with invalidation
+    if (toVersionData.valid) {
+      marketAccountPosition.maker = toPosition.maker.plus(
+        marketAccountPosition.makerInvalidation.minus(toPosition.invalidation.maker),
+      )
+      marketAccountPosition.long = toPosition.long.plus(
+        marketAccountPosition.longInvalidation.minus(toPosition.invalidation.long),
+      )
+      marketAccountPosition.short = toPosition.short.plus(
+        marketAccountPosition.shortInvalidation.minus(toPosition.invalidation.short),
+      )
+
+      const toMagnitude = magnitude(
+        marketAccountPosition.maker,
+        marketAccountPosition.long,
+        marketAccountPosition.short,
+      )
+      if (currentMagnitude.equals(BigInt.zero()) && toMagnitude.gt(BigInt.zero())) {
+        const checkpointId = marketAccountPosition.id.concat(':').concat(version.toString())
+        const checkpoint = new MarketAccountCheckpoint(checkpointId)
+        checkpoint.merge([marketAccountPosition])
+        checkpoint.id = checkpointId
+        checkpoint.version = version
+        checkpoint.type = 'open'
+        checkpoint.blockNumber = event.block.number
+        checkpoint.blockTimestamp = event.block.timestamp
+        checkpoint.transactionHash = event.transaction.hash
+        checkpoint.side = side(marketAccountPosition.maker, marketAccountPosition.long, marketAccountPosition.short)
+        checkpoint.startMagnitude = magnitude(
+          marketAccountPosition.maker,
+          marketAccountPosition.long,
+          marketAccountPosition.short,
+        )
+        checkpoint.save()
+      }
+      if (currentMagnitude.gt(BigInt.zero()) && toMagnitude.equals(BigInt.zero())) {
+        const checkpointId = marketAccountPosition.id.concat(':').concat(version.toString())
+        const checkpoint = new MarketAccountCheckpoint(checkpointId)
+        checkpoint.merge([marketAccountPosition])
+        checkpoint.id = checkpointId
+        checkpoint.version = version
+        checkpoint.type = 'close'
+        checkpoint.blockNumber = event.block.number
+        checkpoint.blockTimestamp = event.block.timestamp
+        checkpoint.transactionHash = event.transaction.hash
+        checkpoint.side = currentSide // Use current side since the new side is zero
+        checkpoint.startMagnitude = BigInt.zero()
+        checkpoint.save()
+      }
+      if (toMagnitude.gt(currentMagnitude)) {
+        marketAccountPosition.openSize = marketAccountPosition.openSize.plus(toMagnitude.minus(currentMagnitude))
+        marketAccountPosition.openNotional = marketAccountPosition.openNotional.plus(
+          mul(toMagnitude.minus(currentMagnitude), price(market, version).abs()),
+        )
+        marketAccountPosition.openPriceImpactFees = marketAccountPosition.openPriceImpactFees.plus(
+          positionPrcessedEntity.priceImpactFee,
+        )
+      }
+    }
+
+    // If invalid, increment invalidations
+    if (!toVersionData.valid) {
+      marketAccountPosition.makerInvalidation = toPosition.invalidation.maker.plus(
+        marketAccountPosition.maker.minus(toPosition.maker),
+      )
+      marketAccountPosition.longInvalidation = toPosition.invalidation.long.plus(
+        marketAccountPosition.long.minus(toPosition.long),
+      )
+      marketAccountPosition.shortInvalidation = toPosition.invalidation.short.plus(
+        marketAccountPosition.short.minus(toPosition.short),
+      )
+    }
+  }
+
+  // Update the latest timestamps
+  marketAccountPosition.lastUpdatedBlockNumber = event.block.number
+  marketAccountPosition.lastUpdatedBlockTimestamp = event.block.timestamp
+  marketAccountPosition.lastUpdatedVersion = version
+
+  // NOTE: we specifically don't update netDeposits here because those are handled in
+  // the UPDATE event as they settle immediately
+
+  // Save updates
+  marketAccountPosition.save()
+}
+
+function positionProcessedID(market: Address, fromOracleVersion: BigInt): string {
+  return market
+    .toHexString()
+    .concat(':')
+    .concat(fromOracleVersion.toString())
+}
+export function handlePositionProcessed(event: PositionProcessedEvent): void {
+  let entity = new PositionProcessed(positionProcessedID(event.address, event.params.fromOracleVersion))
+  entity.market = event.address
+
+  entity.fromOracleVersion = event.params.fromOracleVersion
+  entity.toOracleVersion = event.params.toOracleVersion
+  entity.fromPosition = event.params.fromPosition
+  entity.toPosition = event.params.toPosition
+  entity.accumulationResult_positionFeeMaker = event.params.accumulationResult.positionFeeMaker
+  entity.accumulationResult_positionFeeFee = event.params.accumulationResult.positionFeeFee
+  entity.accumulationResult_fundingMaker = event.params.accumulationResult.fundingMaker
+  entity.accumulationResult_fundingLong = event.params.accumulationResult.fundingLong
+  entity.accumulationResult_fundingShort = event.params.accumulationResult.fundingShort
+  entity.accumulationResult_fundingFee = event.params.accumulationResult.fundingFee
+  entity.accumulationResult_interestMaker = event.params.accumulationResult.interestMaker
+  entity.accumulationResult_interestLong = event.params.accumulationResult.interestLong
+  entity.accumulationResult_interestShort = event.params.accumulationResult.interestShort
+  entity.accumulationResult_interestFee = event.params.accumulationResult.interestFee
+  entity.accumulationResult_pnlMaker = event.params.accumulationResult.pnlMaker
+  entity.accumulationResult_pnlLong = event.params.accumulationResult.pnlLong
+  entity.accumulationResult_pnlShort = event.params.accumulationResult.pnlShort
+  entity.accumulationResult_rewardMaker = event.params.accumulationResult.rewardMaker
+  entity.accumulationResult_rewardLong = event.params.accumulationResult.rewardLong
+  entity.accumulationResult_rewardShort = event.params.accumulationResult.rewardShort
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  const marketContract = Market.bind(event.address)
+  const toVersionData = marketContract.versions(event.params.toOracleVersion)
+  if (toVersionData.valid) {
+    entity.toVersionValid = true
+    entity.toVersionPrice = price(event.address, event.params.toOracleVersion)
+  } else {
+    entity.toVersionValid = false
+    entity.toVersionPrice = BigInt.zero()
+  }
+
+  const marketGlobalPosition = getOrCreateMarketGlobalPosition(event.address)
+  entity.fromMaker = marketGlobalPosition.maker
+  entity.fromLong = marketGlobalPosition.long
+  entity.fromShort = marketGlobalPosition.short
+  entity.fromVersionPrice = price(event.address, marketGlobalPosition.timestamp)
+
+  entity.save()
+
+  // Update maker accumulator before transition global position
+  updateMarketAccumulator(event)
+
+  let makerDelta = BigInt.zero()
+  let longDelta = BigInt.zero()
+  let shortDelta = BigInt.zero()
+
+  // If the toVersion is valid, then we need to update the global position
+  if (event.params.fromPosition.lt(event.params.toPosition)) {
+    let toPosition = marketContract.pendingPosition(event.params.toPosition)
+
+    // adjust the position
+    if (toVersionData.valid) {
+      const nextMaker = toPosition.maker.plus(
+        marketGlobalPosition.makerInvalidation.minus(toPosition.invalidation.maker),
+      )
+      const nextLong = toPosition.long.plus(marketGlobalPosition.longInvalidation.minus(toPosition.invalidation.long))
+      const nextShort = toPosition.short.plus(
+        marketGlobalPosition.shortInvalidation.minus(toPosition.invalidation.short),
+      )
+
+      makerDelta = nextMaker.minus(marketGlobalPosition.maker)
+      longDelta = nextLong.minus(marketGlobalPosition.long)
+      shortDelta = nextShort.minus(marketGlobalPosition.short)
+
+      marketGlobalPosition.maker = nextMaker
+      marketGlobalPosition.long = nextLong
+      marketGlobalPosition.short = nextShort
+    }
+
+    if (!toVersionData.valid) {
+      marketGlobalPosition.makerInvalidation = toPosition.invalidation.maker.plus(
+        marketGlobalPosition.maker.minus(toPosition.maker),
+      )
+      marketGlobalPosition.longInvalidation = toPosition.invalidation.long.plus(
+        marketGlobalPosition.long.minus(toPosition.long),
+      )
+      marketGlobalPosition.shortInvalidation = toPosition.invalidation.short.plus(
+        marketGlobalPosition.short.minus(toPosition.short),
+      )
+    }
+
+    marketGlobalPosition.timestamp = event.params.toOracleVersion
+    marketGlobalPosition.save()
+  }
+
+  updateBucketedVolumes(
+    entity,
+    event,
+    entity.fromVersionPrice,
+    entity.fromMaker,
+    entity.fromLong,
+    entity.fromShort,
+    makerDelta,
+    longDelta,
+    shortDelta,
+  )
+}
+
+function marketAccumulatorId(market: Address, version: BigInt): string {
+  return market
+    .toHexString()
+    .concat(':')
+    .concat(version.toString())
+}
+function updateMarketAccumulator(event: PositionProcessedEvent): void {
+  const marketContract = Market.bind(event.address)
+  const fromPosition = getOrCreateMarketGlobalPosition(event.address)
+
+  const version = marketContract.versions(event.params.toOracleVersion)
+
+  let entity = new MarketAccumulator(marketAccumulatorId(event.address, event.params.toOracleVersion))
+
+  entity.latest = false
+  entity.market = event.address
+  entity.version = event.params.toOracleVersion
+  entity.positionId = event.params.fromPosition
+  entity.positionMaker = fromPosition.maker
+  entity.positionLong = fromPosition.long
+  entity.positionShort = fromPosition.short
+
+  entity.makerValue = version.makerValue._value
+  entity.longValue = version.longValue._value
+  entity.shortValue = version.shortValue._value
+  entity.makerReward = version.makerReward._value
+  entity.longReward = version.longReward._value
+  entity.shortReward = version.shortReward._value
+
+  // Get the last accumulator
+  const latestId = event.address.toHexString().concat(':latest')
+  let lastAccumulator = MarketAccumulator.load(latestId)
+
+  // Accumulate the values
+  entity.pnlMaker = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.pnlMaker,
+    event.params.accumulationResult.pnlMaker,
+    fromPosition.maker,
+  )
+  entity.pnlLong = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.pnlLong,
+    event.params.accumulationResult.pnlLong,
+    fromPosition.long,
+  )
+  entity.pnlShort = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.pnlShort,
+    event.params.accumulationResult.pnlShort,
+    fromPosition.short,
+  )
+  entity.fundingMaker = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.fundingMaker,
+    event.params.accumulationResult.fundingMaker,
+    fromPosition.maker,
+  )
+  entity.fundingLong = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.fundingLong,
+    event.params.accumulationResult.fundingLong,
+    fromPosition.long,
+  )
+  entity.fundingShort = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.fundingShort,
+    event.params.accumulationResult.fundingShort,
+    fromPosition.short,
+  )
+  entity.interestMaker = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.interestMaker,
+    event.params.accumulationResult.interestMaker,
+    fromPosition.maker,
+  )
+  entity.interestLong = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.interestLong,
+    event.params.accumulationResult.interestLong,
+    fromPosition.long,
+  )
+  entity.interestShort = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.interestShort,
+    event.params.accumulationResult.interestShort,
+    fromPosition.short,
+  )
+  entity.positionFeeMaker = accumulatorIncrement(
+    lastAccumulator === null ? BigInt.zero() : lastAccumulator.positionFeeMaker,
+    event.params.accumulationResult.positionFeeMaker,
+    fromPosition.maker,
+  )
+
+  // save and save as latest
+  entity.save()
+  if (lastAccumulator === null) {
+    lastAccumulator = new MarketAccumulator(latestId)
+  }
+  lastAccumulator.merge([entity])
+  lastAccumulator.id = latestId
+  lastAccumulator.latest = true
+  lastAccumulator.save()
+}
+
+function updatedId(market: Address, account: Address, version: BigInt): string {
+  return market
+    .toHexString()
+    .concat(':')
+    .concat(account.toHexString())
+    .concat(':')
+    .concat(version.toString())
+}
+export function handleUpdated(event: UpdatedEvent): void {
+  const id = updatedId(event.address, event.params.account, event.params.version)
+  let entity = Updated.load(id)
+  if (entity === null) {
+    entity = new Updated(id)
+  }
+
+  entity.market = event.address
+  entity.sender = event.params.sender
+  entity.account = event.params.account
+  entity.version = event.params.version
+  entity.newMaker = event.params.newMaker
+  entity.newLong = event.params.newLong
+  entity.newShort = event.params.newShort
+  entity.collateral = event.params.collateral
+  entity.protect = event.params.protect
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  const market = Market.bind(event.address)
+  const global = market.global()
+  const local = market.locals(event.params.account)
+
+  entity.globalPositionId = global.currentId
+  entity.localPositionId = local.currentId
+  entity.valid = false
+  entity.price = BigInt.zero()
+  entity.positionFee = BigInt.zero()
+  entity.priceImpactFee = BigInt.zero()
+  entity.interfaceFee = BigInt.zero()
+  const receipt = event.receipt
+  if (receipt != null) {
+    let interfaceFee = BigInt.zero()
+    let orderFee = BigInt.zero()
+    // TODO: how do we handle if multiple interface fees are charged in one tx
+    for (let i = 0; i < receipt.logs.length; i++) {
+      const log = receipt.logs[i]
+      if (log.topics[0].equals(INTERFACE_FEE_TOPIC)) {
+        interfaceFee = interfaceFee.plus(BigInt.fromUnsignedBytes(Bytes.fromUint8Array(log.data.reverse())))
+      }
+
+      if (log.topics[0].equals(ORDER_FEE_TOPIC)) {
+        const decoded = ethereum.decode('(uint256,uint256,uint256,uint256)', log.data)
+        if (decoded) {
+          const feeAmount = fromBig18(decoded.toTuple()[3].toBigInt(), true)
+          // If the fee is equal to the collateral withdrawal, then it is an order fee
+          if (feeAmount.equals(entity.collateral.times(BigInt.fromI32(-1)))) {
+            orderFee = feeAmount
+          }
+        }
+      }
+    }
+    entity.interfaceFee = interfaceFee
+    entity.orderFee = orderFee
+  }
+
+  entity.save()
+
+  // Pull latest user position and update net deposits and collateral
+  // All other fields are updated after settlement occurs
+  const latestPosition = getOrCreateMarketAccountPosition(
+    event.address,
+    event.params.account,
+    event.block.number,
+    event.block.timestamp,
+    event.params.version,
+  )
+  latestPosition.netDeposits = latestPosition.netDeposits.plus(event.params.collateral)
+  latestPosition.collateral = latestPosition.collateral.plus(event.params.collateral)
+  latestPosition.accumulatedInterfaceFees = latestPosition.accumulatedInterfaceFees.plus(entity.interfaceFee)
+  latestPosition.accumulatedOrderFees = latestPosition.accumulatedOrderFees.plus(entity.orderFee)
+  latestPosition.save()
+}
+
+function latestMarketAccountPositionId(market: Address, account: Address): string {
+  return market
+    .toHexString()
+    .concat(':')
+    .concat(account.toHexString())
+}
+function getOrCreateMarketAccountPosition(
+  market: Address,
+  account: Address,
+  blockNumber: BigInt,
+  timestamp: BigInt,
+  version: BigInt,
+): MarketAccountPosition {
+  const id = latestMarketAccountPositionId(market, account)
+  let marketAccountPosition = MarketAccountPosition.load(id)
+  if (marketAccountPosition === null) {
+    marketAccountPosition = new MarketAccountPosition(latestMarketAccountPositionId(market, account))
+    marketAccountPosition.market = market
+    marketAccountPosition.account = account
+
+    marketAccountPosition.maker = BigInt.zero()
+    marketAccountPosition.long = BigInt.zero()
+    marketAccountPosition.short = BigInt.zero()
+    marketAccountPosition.collateral = BigInt.zero()
+    marketAccountPosition.makerInvalidation = BigInt.zero()
+    marketAccountPosition.longInvalidation = BigInt.zero()
+    marketAccountPosition.shortInvalidation = BigInt.zero()
+
+    marketAccountPosition.netDeposits = BigInt.zero()
+    marketAccountPosition.accumulatedPnl = BigInt.zero()
+    marketAccountPosition.accumulatedFunding = BigInt.zero()
+    marketAccountPosition.accumulatedInterest = BigInt.zero()
+    marketAccountPosition.accumulatedMakerPositionFee = BigInt.zero()
+    marketAccountPosition.accumulatedValue = BigInt.zero()
+    marketAccountPosition.accumulatedReward = BigInt.zero()
+    marketAccountPosition.accumulatedCollateral = BigInt.zero()
+    marketAccountPosition.accumulatedPositionFees = BigInt.zero()
+    marketAccountPosition.accumulatedPriceImpactFees = BigInt.zero()
+    marketAccountPosition.accumulatedKeeperFees = BigInt.zero()
+    marketAccountPosition.accumulatedInterfaceFees = BigInt.zero()
+    marketAccountPosition.accumulatedOrderFees = BigInt.zero()
+
+    marketAccountPosition.openSize = BigInt.zero()
+    marketAccountPosition.openNotional = BigInt.zero()
+    marketAccountPosition.openPriceImpactFees = BigInt.zero()
+    marketAccountPosition.weightedFunding = BigInt.zero()
+    marketAccountPosition.weightedInterest = BigInt.zero()
+    marketAccountPosition.weightedMakerPositionFees = BigInt.zero()
+    marketAccountPosition.totalWeight = BigInt.zero()
+
+    marketAccountPosition.lastUpdatedBlockNumber = blockNumber
+    marketAccountPosition.lastUpdatedBlockTimestamp = timestamp
+    marketAccountPosition.lastUpdatedVersion = version
+    marketAccountPosition.save()
+  }
+
+  return marketAccountPosition
+}
+
+function getOrCreateMarketGlobalPosition(market: Address): MarketGlobalPosition {
+  const id = market.toHexString()
+  let marketGlobalPosition = MarketGlobalPosition.load(id)
+  if (marketGlobalPosition === null) {
+    marketGlobalPosition = new MarketGlobalPosition(id)
+    marketGlobalPosition.market = market
+    marketGlobalPosition.timestamp = BigInt.zero()
+    marketGlobalPosition.maker = BigInt.zero()
+    marketGlobalPosition.long = BigInt.zero()
+    marketGlobalPosition.short = BigInt.zero()
+    marketGlobalPosition.makerInvalidation = BigInt.zero()
+    marketGlobalPosition.longInvalidation = BigInt.zero()
+    marketGlobalPosition.shortInvalidation = BigInt.zero()
+  }
+
+  return marketGlobalPosition
+}
+
+/*
+
+      PARAM UPDATES
+
+*/
+
+export function handleBeneficiaryUpdated(event: BeneficiaryUpdatedEvent): void {
+  let entity = new BeneficiaryUpdated(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.newBeneficiary = event.params.newBeneficiary
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}
+
+export function handleCoordinatorUpdated(event: CoordinatorUpdatedEvent): void {
+  let entity = new CoordinatorUpdated(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.newCoordinator = event.params.newCoordinator
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}
+
+export function handleFeeClaimed(event: FeeClaimedEvent): void {
+  let entity = new FeeClaimed(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.account = event.params.account
+  entity.amount = event.params.amount
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}
+
+export function handleInitialized(event: InitializedEvent): void {
+  let entity = new MarketInitialized(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.version = event.params.version
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}
+
+export function handleRewardClaimed(event: RewardClaimedEvent): void {
+  let entity = new RewardClaimed(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.account = event.params.account
+  entity.amount = event.params.amount
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}
+
+export function handleRewardUpdated(event: RewardUpdatedEvent): void {
+  let entity = new RewardUpdated(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.newReward = event.params.newReward
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}
+
+export function handleRiskParameterUpdated(event: RiskParameterUpdatedEvent): void {
+  let entity = new RiskParameterUpdated(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.newRiskParameter_margin = event.params.newRiskParameter.margin
+  entity.newRiskParameter_maintenance = event.params.newRiskParameter.maintenance
+  entity.newRiskParameter_takerFee = event.params.newRiskParameter.takerFee
+  entity.newRiskParameter_takerSkewFee = event.params.newRiskParameter.takerSkewFee
+  entity.newRiskParameter_takerImpactFee = event.params.newRiskParameter.takerImpactFee
+  entity.newRiskParameter_makerFee = event.params.newRiskParameter.makerFee
+  entity.newRiskParameter_makerImpactFee = event.params.newRiskParameter.makerImpactFee
+  entity.newRiskParameter_makerLimit = event.params.newRiskParameter.makerLimit
+  entity.newRiskParameter_efficiencyLimit = event.params.newRiskParameter.efficiencyLimit
+  entity.newRiskParameter_liquidationFee = event.params.newRiskParameter.liquidationFee
+  entity.newRiskParameter_minLiquidationFee = event.params.newRiskParameter.minLiquidationFee
+  entity.newRiskParameter_maxLiquidationFee = event.params.newRiskParameter.maxLiquidationFee
+  entity.newRiskParameter_utilizationCurve_minRate = event.params.newRiskParameter.utilizationCurve.minRate
+  entity.newRiskParameter_utilizationCurve_maxRate = event.params.newRiskParameter.utilizationCurve.maxRate
+  entity.newRiskParameter_utilizationCurve_targetRate = event.params.newRiskParameter.utilizationCurve.targetRate
+  entity.newRiskParameter_utilizationCurve_targetUtilization =
+    event.params.newRiskParameter.utilizationCurve.targetUtilization
+  entity.newRiskParameter_pController_k = event.params.newRiskParameter.pController.k
+  entity.newRiskParameter_pController_max = event.params.newRiskParameter.pController.max
+  entity.newRiskParameter_minMargin = event.params.newRiskParameter.minMargin
+  entity.newRiskParameter_minMaintenance = event.params.newRiskParameter.minMaintenance
+  entity.newRiskParameter_virtualTaker = event.params.newRiskParameter.virtualTaker
+  entity.newRiskParameter_staleAfter = event.params.newRiskParameter.staleAfter
+  entity.newRiskParameter_makerReceiveOnly = event.params.newRiskParameter.makerReceiveOnly
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}
+
+export function handleParameterUpdated(event: ParameterUpdatedEvent): void {
+  let entity = new MarketParameterUpdated(event.transaction.hash.concatI32(event.logIndex.toI32()))
+  entity.market = event.address
+  entity.newParameter_fundingFee = event.params.newParameter.fundingFee
+  entity.newParameter_interestFee = event.params.newParameter.interestFee
+  entity.newParameter_positionFee = event.params.newParameter.positionFee
+  entity.newParameter_oracleFee = event.params.newParameter.oracleFee
+  entity.newParameter_riskFee = event.params.newParameter.riskFee
+  entity.newParameter_maxPendingGlobal = event.params.newParameter.maxPendingGlobal
+  entity.newParameter_maxPendingLocal = event.params.newParameter.maxPendingLocal
+  entity.newParameter_makerRewardRate = event.params.newParameter.makerRewardRate
+  entity.newParameter_longRewardRate = event.params.newParameter.longRewardRate
+  entity.newParameter_shortRewardRate = event.params.newParameter.shortRewardRate
+  entity.newParameter_settlementFee = event.params.newParameter.settlementFee
+  entity.newParameter_takerCloseAlways = event.params.newParameter.takerCloseAlways
+  entity.newParameter_makerCloseAlways = event.params.newParameter.makerCloseAlways
+  entity.newParameter_closed = event.params.newParameter.closed
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
+}

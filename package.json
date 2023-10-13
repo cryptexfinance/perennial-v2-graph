@@ -1,0 +1,24 @@
+{
+  "name": "perennial-v2",
+  "version": "1.0.0-rc8",
+  "license": "UNLICENSED",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build:arbitrumGoerli": "graph build --network arbitrum-goerli",
+    "_deploy:arbitrumGoerli": "yarn build:arbitrumGoerli && graph deploy perennial-v2-arbitrumGoerli --version-label $npm_package_version --node $GRAPH_DEPLOY_NODE --deploy-key $GRAPH_DEPLOY_KEY --ipfs $GRAPH_DEPLOY_IPFS",
+    "deploy:arbitrumGoerli": "dotenv -- yarn _deploy:arbitrumGoerli",
+    "build:arbitrum": "graph build --network arbitrum-one",
+    "_deploy:arbitrum": "yarn build:arbitrum && graph deploy perennial-v2-arbitrum --version-label $npm_package_version --node $GRAPH_DEPLOY_NODE --deploy-key $GRAPH_DEPLOY_KEY --ipfs $GRAPH_DEPLOY_IPFS",
+    "deploy:arbitrum": "dotenv -- yarn _deploy:arbitrum",
+    "test": "graph test"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.53.0",
+    "@graphprotocol/graph-ts": "0.30.0",
+    "dotenv": "^16.3.1",
+    "dotenv-cli": "^7.3.0"
+  },
+  "devDependencies": {
+    "matchstick-as": "0.5.0"
+  }
+}

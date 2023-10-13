@@ -1,0 +1,8 @@
+**/generated
+**/build
+**/node_modules/
+.vscode
+*/.*token
+.DS_Store
+
+.env

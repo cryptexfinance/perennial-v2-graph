@@ -1,0 +1,874 @@
+type Initialized @entity(immutable: true) {
+  id: Bytes!
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type InstanceRegistered @entity(immutable: true) {
+  id: Bytes!
+  instance: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MarketCreated @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  definition_token: Bytes! # address
+  definition_oracle: Bytes! # address
+  definition_payoff: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OperatorUpdated @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  operator: Bytes! # address
+  newEnabled: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OwnerUpdated @entity(immutable: true) {
+  id: Bytes!
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ParameterUpdated @entity(immutable: true) {
+  id: Bytes!
+  newParameter_protocolFee: BigInt! # uint256
+  newParameter_maxFee: BigInt! # uint256
+  newParameter_maxFeeAbsolute: BigInt! # uint256
+  newParameter_maxCut: BigInt! # uint256
+  newParameter_maxRate: BigInt! # uint256
+  newParameter_minMaintenance: BigInt! # uint256
+  newParameter_minEfficiency: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Paused @entity(immutable: true) {
+  id: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PauserUpdated @entity(immutable: true) {
+  id: Bytes!
+  newPauser: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PendingOwnerUpdated @entity(immutable: true) {
+  id: Bytes!
+  newPendingOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Unpaused @entity(immutable: true) {
+  id: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+type CallerAuthorized @entity(immutable: true) {
+  id: Bytes!
+  caller: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FactoryRegistered @entity(immutable: true) {
+  id: Bytes!
+  factory: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleFactoryInitialized @entity(immutable: true) {
+  id: Bytes!
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleFactoryInstanceRegistered @entity(immutable: true) {
+  id: Bytes!
+  instance: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MaxClaimUpdated @entity(immutable: true) {
+  id: Bytes!
+  newMaxClaim: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleCreated @entity(immutable: true) {
+  id: Bytes!
+  oracle: Bytes! # address
+  OracleFactory_id: Bytes! # bytes32
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleFactoryOwnerUpdated @entity(immutable: true) {
+  id: Bytes!
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleFactoryPaused @entity(immutable: true) {
+  id: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleFactoryPauserUpdated @entity(immutable: true) {
+  id: Bytes!
+  newPauser: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleFactoryPendingOwnerUpdated @entity(immutable: true) {
+  id: Bytes!
+  newPendingOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleFactoryUnpaused @entity(immutable: true) {
+  id: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+######################
+#       Market       #
+######################
+type AccountPositionProcessed @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  account: Bytes! # address
+  fromOracleVersion: BigInt! # uint256
+  toOracleVersion: BigInt! # uint256
+  fromPosition: BigInt! # uint256
+  toPosition: BigInt! # uint256
+  toVersionValid: Boolean! # bool
+  toVersionPrice: BigInt! # uint256
+  accumulationResult_collateralAmount: BigInt! # int256
+  accumulationResult_rewardAmount: BigInt! # uint256
+  accumulationResult_positionFee: BigInt! # uint256
+  accumulationResult_keeper: BigInt! # uint256
+  accumulatedPnl: BigInt!
+  accumulatedFunding: BigInt!
+  accumulatedInterest: BigInt!
+  accumulatedMakerPositionFee: BigInt! # only if maker
+  accumulatedValue: BigInt! # this is a summation of all the pnl, funding, interest, and position fees
+  accumulatedReward: BigInt!
+  side: PositionSide!
+  size: BigInt!
+  collateral: BigInt!
+  priceImpactFee: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type BeneficiaryUpdated @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  newBeneficiary: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type CoordinatorUpdated @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  newCoordinator: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FeeClaimed @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  account: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MarketInitialized @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MarketParameterUpdated @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  newParameter_fundingFee: BigInt! # uint256
+  newParameter_interestFee: BigInt! # uint256
+  newParameter_positionFee: BigInt! # uint256
+  newParameter_oracleFee: BigInt! # uint256
+  newParameter_riskFee: BigInt! # uint256
+  newParameter_maxPendingGlobal: BigInt! # uint256
+  newParameter_maxPendingLocal: BigInt! # uint256
+  newParameter_makerRewardRate: BigInt! # uint256
+  newParameter_longRewardRate: BigInt! # uint256
+  newParameter_shortRewardRate: BigInt! # uint256
+  newParameter_settlementFee: BigInt! # uint256
+  newParameter_takerCloseAlways: Boolean! # bool
+  newParameter_makerCloseAlways: Boolean! # bool
+  newParameter_closed: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PositionProcessed @entity(immutable: true) {
+  id: String! # market:fromOracleVersion
+  market: Bytes! # address
+  fromOracleVersion: BigInt! # uint256
+  toOracleVersion: BigInt! # uint256
+  fromPosition: BigInt! # uint256
+  toPosition: BigInt! # uint256
+  toVersionValid: Boolean! # bool
+  toVersionPrice: BigInt! # uint2566
+  fromMaker: BigInt! # uint256
+  fromLong: BigInt! # uint256
+  fromShort: BigInt! # uint256
+  fromVersionPrice: BigInt! # uint256
+  accumulationResult_positionFeeMaker: BigInt! # uint256
+  accumulationResult_positionFeeFee: BigInt! # uint256
+  accumulationResult_fundingMaker: BigInt! # int256
+  accumulationResult_fundingLong: BigInt! # int256
+  accumulationResult_fundingShort: BigInt! # int256
+  accumulationResult_fundingFee: BigInt! # uint256
+  accumulationResult_interestMaker: BigInt! # int256
+  accumulationResult_interestLong: BigInt! # int256
+  accumulationResult_interestShort: BigInt! # int256
+  accumulationResult_interestFee: BigInt! # uint256
+  accumulationResult_pnlMaker: BigInt! # int256
+  accumulationResult_pnlLong: BigInt! # int256
+  accumulationResult_pnlShort: BigInt! # int256
+  accumulationResult_rewardMaker: BigInt! # uint256
+  accumulationResult_rewardLong: BigInt! # uint256
+  accumulationResult_rewardShort: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type RewardClaimed @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  account: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type RewardUpdated @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  newReward: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type RiskParameterUpdated @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  newRiskParameter_margin: BigInt! # uint256
+  newRiskParameter_maintenance: BigInt! # uint256
+  newRiskParameter_takerFee: BigInt! # uint256
+  newRiskParameter_takerSkewFee: BigInt! # uint256
+  newRiskParameter_takerImpactFee: BigInt! # uint256
+  newRiskParameter_makerFee: BigInt! # uint256
+  newRiskParameter_makerImpactFee: BigInt! # uint256
+  newRiskParameter_makerLimit: BigInt! # uint256
+  newRiskParameter_efficiencyLimit: BigInt! # uint256
+  newRiskParameter_liquidationFee: BigInt! # uint256
+  newRiskParameter_minLiquidationFee: BigInt! # uint256
+  newRiskParameter_maxLiquidationFee: BigInt! # uint256
+  newRiskParameter_utilizationCurve_minRate: BigInt! # uint256
+  newRiskParameter_utilizationCurve_maxRate: BigInt! # uint256
+  newRiskParameter_utilizationCurve_targetRate: BigInt! # uint256
+  newRiskParameter_utilizationCurve_targetUtilization: BigInt! # uint256
+  newRiskParameter_pController_k: BigInt! # uint256
+  newRiskParameter_pController_max: BigInt! # uint256
+  newRiskParameter_minMargin: BigInt! # uint256
+  newRiskParameter_minMaintenance: BigInt! # uint256
+  newRiskParameter_virtualTaker: BigInt! # uint256
+  newRiskParameter_staleAfter: BigInt! # uint256
+  newRiskParameter_makerReceiveOnly: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Updated @entity {
+  id: String! # market:account:version
+  market: Bytes! # address
+  sender: Bytes! # address
+  account: Bytes! # address
+  version: BigInt! # uint256
+  newMaker: BigInt! # uint256
+  newLong: BigInt! # uint256
+  newShort: BigInt! # uint256
+  collateral: BigInt! # int256
+  protect: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  localPositionId: BigInt! # uint256
+  globalPositionId: BigInt! # uint256
+  valid: Boolean! # bool
+  price: BigInt! # uint256
+  positionFee: BigInt! # uint256
+  priceImpactFee: BigInt! # uint256
+  interfaceFee: BigInt! # uint256
+  orderFee: BigInt! # uint256
+}
+
+# Not immutable because we need to update the 'latest' value
+type MarketAccumulator @entity {
+  id: String! # market:version (or market:latest)
+  market: Bytes! # address
+  version: BigInt! # uint256
+  # Position values
+  positionId: BigInt! # uint256
+  positionMaker: BigInt! # uint256
+  positionLong: BigInt! # uint256
+  positionShort: BigInt! # uint256
+  # Total Accumulators
+  makerValue: BigInt! # int256
+  longValue: BigInt! # int256
+  shortValue: BigInt! # int256
+  makerReward: BigInt! # uint256
+  longReward: BigInt! # uint256
+  shortReward: BigInt! # uint256
+  # Derived Accumulators
+  pnlMaker: BigInt! # int256
+  pnlLong: BigInt! # int256
+  pnlShort: BigInt! # int256
+  fundingMaker: BigInt! # int256
+  fundingLong: BigInt! # int256
+  fundingShort: BigInt! # int256
+  interestMaker: BigInt! # int256
+  interestLong: BigInt! # int256
+  interestShort: BigInt! # int256
+  positionFeeMaker: BigInt! # uint256
+  latest: Boolean! # bool # keeps track of whether this is the latest tracker or not
+}
+
+enum PositionSide {
+  maker
+  long
+  short
+}
+
+type MarketAccountPosition @entity {
+  id: String! #market:account
+  market: Bytes! # address
+  account: Bytes! # address
+  maker: BigInt!
+  long: BigInt!
+  short: BigInt!
+  collateral: BigInt!
+  makerInvalidation: BigInt! # uint256
+  longInvalidation: BigInt! # uint256
+  shortInvalidation: BigInt! # uint256
+  netDeposits: BigInt!
+  accumulatedPnl: BigInt!
+  accumulatedFunding: BigInt!
+  accumulatedInterest: BigInt!
+  accumulatedMakerPositionFee: BigInt! # only if maker
+  accumulatedValue: BigInt! # this is a summation of all the pnl, funding, interest, and position fees
+  accumulatedReward: BigInt!
+  accumulatedCollateral: BigInt!
+  accumulatedPositionFees: BigInt!
+  accumulatedPriceImpactFees: BigInt!
+  accumulatedKeeperFees: BigInt!
+  accumulatedInterfaceFees: BigInt!
+  accumulatedOrderFees: BigInt!
+
+  openSize: BigInt!
+  openNotional: BigInt!
+  openPriceImpactFees: BigInt!
+  weightedFunding: BigInt!
+  weightedInterest: BigInt!
+  weightedMakerPositionFees: BigInt!
+  totalWeight: BigInt!
+
+  lastUpdatedVersion: BigInt!
+  lastUpdatedBlockNumber: BigInt!
+  lastUpdatedBlockTimestamp: BigInt!
+}
+
+enum CheckpointType {
+  open
+  close
+}
+
+type MarketAccountCheckpoint @entity {
+  id: String! #market:account:version
+  market: Bytes! # address
+  account: Bytes! # address
+  version: BigInt! # uint256
+  type: CheckpointType!
+  side: PositionSide!
+  # Snapshot accumulator values
+  startMagnitude: BigInt!
+  collateral: BigInt!
+
+  netDeposits: BigInt!
+  accumulatedPnl: BigInt!
+  accumulatedFunding: BigInt!
+  accumulatedInterest: BigInt!
+  accumulatedMakerPositionFee: BigInt! # only if maker
+  accumulatedValue: BigInt! # this is a summation of all the pnl, funding, interest, and position fees
+  accumulatedReward: BigInt!
+  accumulatedCollateral: BigInt!
+  accumulatedPositionFees: BigInt!
+  accumulatedPriceImpactFees: BigInt!
+  accumulatedKeeperFees: BigInt!
+  accumulatedInterfaceFees: BigInt!
+  accumulatedOrderFees: BigInt!
+
+  openSize: BigInt!
+  openNotional: BigInt!
+  openPriceImpactFees: BigInt!
+  weightedFunding: BigInt!
+  weightedInterest: BigInt!
+  weightedMakerPositionFees: BigInt!
+  totalWeight: BigInt!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MarketGlobalPosition @entity {
+  id: String! # market
+  market: Bytes! # address
+  timestamp: BigInt! # uint256
+  maker: BigInt! # uint256
+  long: BigInt! # uint256
+  short: BigInt! # uint256
+  makerInvalidation: BigInt! # uint256
+  longInvalidation: BigInt! # uint256
+  shortInvalidation: BigInt! # uint256
+}
+
+enum Bucket {
+  hourly
+  daily
+  weekly
+  all
+}
+
+type BucketedVolume @entity {
+  id: String!
+
+  bucket: Bucket!
+  market: Bytes! # address
+  periodStartTimestamp: BigInt! # uint256
+  periodStartBlock: BigInt! # uint256
+  periodStartVersion: BigInt! # uint256
+  periodEndTimestamp: BigInt! # uint256
+  periodEndBlock: BigInt! # uint256
+  periodEndVersion: BigInt! # uint256
+  positionFeeMaker: BigInt! # uint256
+  positionFeeFee: BigInt! # uint256
+  fundingMaker: BigInt! # int256
+  fundingLong: BigInt! # int256
+  fundingShort: BigInt! # int256
+  fundingFee: BigInt! # uint256
+  interestMaker: BigInt! # int256
+  interestLong: BigInt! # int256
+  interestShort: BigInt! # int256
+  interestFee: BigInt! # uint256
+  pnlMaker: BigInt! # int256
+  pnlLong: BigInt! # int256
+  pnlShort: BigInt! # int256
+  rewardMaker: BigInt! # uint256
+  rewardLong: BigInt! # uint256
+  rewardShort: BigInt! # uint256
+  makerAmount: BigInt! # uint256
+  longAmount: BigInt! # uint256
+  shortAmount: BigInt! # uint256
+  makerNotional: BigInt! # uint256
+  longNotional: BigInt! # uint256
+  shortNotional: BigInt! # uint256
+  weightedMakerFunding: BigInt!
+  weightedMakerInterest: BigInt!
+  weightedMakerPositionFees: BigInt!
+  weightedLongFunding: BigInt!
+  weightedLongInterest: BigInt!
+  weightedShortFunding: BigInt!
+  weightedShortInterest: BigInt!
+  totalWeight: BigInt!
+}
+
+type VaultFactoryInitialized @entity(immutable: true) {
+  id: Bytes!
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultFactoryInstanceRegistered @entity(immutable: true) {
+  id: Bytes!
+  instance: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultFactoryOperatorUpdated @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  operator: Bytes! # address
+  newEnabled: Boolean! # bool
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultFactoryOwnerUpdated @entity(immutable: true) {
+  id: Bytes!
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultFactoryPaused @entity(immutable: true) {
+  id: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultFactoryPauserUpdated @entity(immutable: true) {
+  id: Bytes!
+  newPauser: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultFactoryPendingOwnerUpdated @entity(immutable: true) {
+  id: Bytes!
+  newPendingOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultFactoryUnpaused @entity(immutable: true) {
+  id: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultCreated @entity(immutable: true) {
+  id: Bytes!
+  vault: Bytes! # address
+  asset: Bytes! # address
+  initialMarket: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+type VaultInitialized @entity(immutable: true) {
+  id: Bytes!
+  vault: Bytes! # address
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultMarketRegistered @entity(immutable: true) {
+  id: Bytes!
+  vault: Bytes! # address
+  marketId: BigInt! # uint256
+  market: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultMarketUpdated @entity(immutable: true) {
+  id: Bytes!
+  vault: Bytes! # address
+  marketId: BigInt! # uint256
+  newWeight: BigInt! # uint256
+  newLeverage: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultParameterUpdated @entity(immutable: true) {
+  id: Bytes!
+  vault: Bytes! # address
+  newParameter_cap: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type VaultUpdated @entity(immutable: true) {
+  id: Bytes!
+  vault: Bytes! # address
+  sender: Bytes! # address
+  account: Bytes! # address
+  version: BigInt! # uint256
+  depositAssets: BigInt! # uint256
+  redeemShares: BigInt! # uint256
+  claimAssets: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+type MultiInvokerFeeCharged @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  to: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MultiInvokerInitialized @entity(immutable: true) {
+  id: Bytes!
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MultiInvokerKeeperCall @entity(immutable: true) {
+  id: Bytes!
+  sender: Bytes! # address
+  gasUsed: BigInt! # uint256
+  multiplier: BigInt! # uint256
+  buffer: BigInt! # uint256
+  keeperFee: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MultiInvokerKeeperFeeCharged @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  market: Bytes! # address
+  to: Bytes! # address
+  fee: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MultiInvokerOrderCancelled @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  market: Bytes! # address
+  nonce: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MultiInvokerOrderExecuted @entity(immutable: true) {
+  id: Bytes!
+  account: Bytes! # address
+  market: Bytes! # address
+  nonce: BigInt! # uint256
+  positionId: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type MultiInvokerOrderPlaced @entity(immutable: false) {
+  id: Bytes!
+  account: Bytes! # address
+  market: Bytes! # address
+  nonce: BigInt! # uint256
+  order_side: Int! # uint8
+  order_comparison: Int! # int8
+  order_fee: BigInt! # uint256
+  order_price: BigInt! # int256
+  order_delta: BigInt! # int256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  executed: Boolean! # bool
+  cancelled: Boolean! # bool
+}
+type GranularityUpdated @entity(immutable: true) {
+  id: Bytes!
+  newGranularity: BigInt! # uint256
+  effectiveAfter: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythFactoryInitialized @entity(immutable: true) {
+  id: Bytes!
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythFactoryInstanceRegistered @entity(immutable: true) {
+  id: Bytes!
+  instance: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythFactoryOracleCreated @entity(immutable: true) {
+  id: Bytes!
+  oracle: Bytes! # address
+  PythFactory_id: Bytes! # bytes32
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythFactoryOwnerUpdated @entity(immutable: true) {
+  id: Bytes!
+  newOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythFactoryPaused @entity(immutable: true) {
+  id: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythFactoryPauserUpdated @entity(immutable: true) {
+  id: Bytes!
+  newPauser: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythFactoryPendingOwnerUpdated @entity(immutable: true) {
+  id: Bytes!
+  newPendingOwner: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythFactoryUnpaused @entity(immutable: true) {
+  id: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+type PythOracleInitialized @entity(immutable: true) {
+  id: Bytes!
+  address: Bytes! # address
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PythOracleKeeperCall @entity(immutable: true) {
+  id: Bytes!
+  address: Bytes! # address
+  sender: Bytes! # address
+  gasUsed: BigInt! # uint256
+  multiplier: BigInt! # uint256
+  buffer: BigInt! # uint256
+  keeperFee: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleProviderVersionFulfilled @entity(immutable: true) {
+  id: Bytes!
+  address: Bytes! # address
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OracleProviderVersionRequested @entity(immutable: true) {
+  id: Bytes!
+  address: Bytes! # address
+  version: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
