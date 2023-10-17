@@ -73,6 +73,9 @@ export function handleKeeperFeeCharged(event: KeeperFeeChargedEvent): void {
 
 export function handleOrderCancelled(event: OrderCancelledEvent): void {
   const id = orderId(event.params.market, event.params.account, event.params.nonce)
+  // Check if this is a noOp cancellation
+  if (MultiInvokerOrderCancelled.load(id) != null) return
+
   let entity = new MultiInvokerOrderCancelled(id)
   entity.account = event.params.account
   entity.market = event.params.market
@@ -93,6 +96,9 @@ export function handleOrderCancelled(event: OrderCancelledEvent): void {
 
 export function handleOrderExecuted(event: OrderExecutedEvent): void {
   const id = orderId(event.params.market, event.params.account, event.params.nonce)
+  // Check if this is a noOp execution
+  if (MultiInvokerOrderExecuted.load(id) != null) return
+
   let entity = new MultiInvokerOrderExecuted(id)
   entity.account = event.params.account
   entity.market = event.params.market
