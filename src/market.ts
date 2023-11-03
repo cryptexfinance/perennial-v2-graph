@@ -571,7 +571,7 @@ export function handleUpdated(event: UpdatedEvent): void {
   const market = Market.bind(event.address)
   const global = market.global()
   const local = market.locals(event.params.account)
-  const pendingPosition = market.pendingPosition(local.currentId)
+  const pendingPosition = market.pendingPositions(event.params.account, local.currentId)
 
   entity.globalPositionId = global.currentId
   entity.localPositionId = local.currentId
