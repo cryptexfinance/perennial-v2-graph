@@ -420,6 +420,9 @@ type MarketAccountPosition @entity {
   maker: BigInt!
   long: BigInt!
   short: BigInt!
+  pendingMaker: BigInt!
+  pendingLong: BigInt!
+  pendingShort: BigInt!
   collateral: BigInt!
   makerInvalidation: BigInt! # uint256
   longInvalidation: BigInt! # uint256
@@ -501,6 +504,9 @@ type MarketGlobalPosition @entity {
   maker: BigInt! # uint256
   long: BigInt! # uint256
   short: BigInt! # uint256
+  pendingMaker: BigInt!
+  pendingLong: BigInt!
+  pendingShort: BigInt!
   makerInvalidation: BigInt! # uint256
   longInvalidation: BigInt! # uint256
   shortInvalidation: BigInt! # uint256

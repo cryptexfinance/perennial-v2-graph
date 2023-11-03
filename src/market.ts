@@ -571,12 +571,13 @@ export function handleUpdated(event: UpdatedEvent): void {
   const market = Market.bind(event.address)
   const global = market.global()
   const local = market.locals(event.params.account)
+  const pendingPosition = market.pendingPosition(local.currentId)
 
   entity.globalPositionId = global.currentId
   entity.localPositionId = local.currentId
   entity.valid = false
   entity.price = BigInt.zero()
-  entity.positionFee = BigInt.zero()
+  entity.positionFee = pendingPosition.fee
   entity.priceImpactFee = BigInt.zero()
   entity.interfaceFee = BigInt.zero()
   const receipt = event.receipt
@@ -620,7 +621,17 @@ export function handleUpdated(event: UpdatedEvent): void {
   latestPosition.collateral = latestPosition.collateral.plus(event.params.collateral)
   latestPosition.accumulatedInterfaceFees = latestPosition.accumulatedInterfaceFees.plus(entity.interfaceFee)
   latestPosition.accumulatedOrderFees = latestPosition.accumulatedOrderFees.plus(entity.orderFee)
+  latestPosition.pendingMaker = event.params.newMaker
+  latestPosition.pendingLong = event.params.newLong
+  latestPosition.pendingShort = event.params.newShort
   latestPosition.save()
+
+  const globalLatestPosition = getOrCreateMarketGlobalPosition(event.address)
+  const globalPending = market.pendingPosition(global.currentId)
+  globalLatestPosition.pendingMaker = globalPending.maker
+  globalLatestPosition.pendingLong = globalPending.long
+  globalLatestPosition.pendingShort = globalPending.short
+  globalLatestPosition.save()
 }
 
 function latestMarketAccountPositionId(market: Address, account: Address): string {
@@ -646,6 +657,9 @@ function getOrCreateMarketAccountPosition(
     marketAccountPosition.maker = BigInt.zero()
     marketAccountPosition.long = BigInt.zero()
     marketAccountPosition.short = BigInt.zero()
+    marketAccountPosition.pendingMaker = BigInt.zero()
+    marketAccountPosition.pendingLong = BigInt.zero()
+    marketAccountPosition.pendingShort = BigInt.zero()
     marketAccountPosition.collateral = BigInt.zero()
     marketAccountPosition.makerInvalidation = BigInt.zero()
     marketAccountPosition.longInvalidation = BigInt.zero()
@@ -692,6 +706,9 @@ function getOrCreateMarketGlobalPosition(market: Address): MarketGlobalPosition 
     marketGlobalPosition.maker = BigInt.zero()
     marketGlobalPosition.long = BigInt.zero()
     marketGlobalPosition.short = BigInt.zero()
+    marketGlobalPosition.pendingMaker = BigInt.zero()
+    marketGlobalPosition.pendingLong = BigInt.zero()
+    marketGlobalPosition.pendingShort = BigInt.zero()
     marketGlobalPosition.makerInvalidation = BigInt.zero()
     marketGlobalPosition.longInvalidation = BigInt.zero()
     marketGlobalPosition.shortInvalidation = BigInt.zero()
