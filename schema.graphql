@@ -370,6 +370,7 @@ type Updated @entity {
   globalPositionId: BigInt! # uint256
   valid: Boolean! # bool
   price: BigInt! # uint256
+  latestPrice: BigInt! # uint256
   positionFee: BigInt! # uint256
   priceImpactFee: BigInt! # uint256
   interfaceFee: BigInt! # uint256
@@ -510,6 +511,13 @@ type MarketGlobalPosition @entity {
   makerInvalidation: BigInt! # uint256
   longInvalidation: BigInt! # uint256
   shortInvalidation: BigInt! # uint256
+}
+
+type MarketVersionPrice @entity(immutable: true) {
+  id: String! # market:version
+  market: Bytes! # address
+  version: BigInt! # uint256
+  price: BigInt! # uint256
 }
 
 enum Bucket {

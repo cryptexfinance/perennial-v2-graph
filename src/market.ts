@@ -29,9 +29,10 @@ import {
   RiskParameterUpdated,
   Updated,
   MarketAccountCheckpoint,
+  MarketVersionPrice,
 } from '../generated/schema'
 import { accumulatorAccumulated, accumulatorIncrement, mul, div, fromBig18 } from './utils/big6Math'
-import { magnitude, price, side } from './utils/position'
+import { latestPrice, magnitude, price, side } from './utils/position'
 import { updateBucketedVolumes } from './utils/volume'
 import { KeeperCall } from '../generated/MultiInvoker/MultiInvoker'
 
@@ -145,7 +146,7 @@ export function handleAccountPositionProcessed(event: AccountPositionProcessedEv
   const toVersionData = Market.bind(event.address).versions(event.params.toOracleVersion)
   if (toVersionData.valid) {
     entity.toVersionValid = true
-    entity.toVersionPrice = price(event.address, event.params.toOracleVersion)
+    entity.toVersionPrice = getOrCreateMarketVersionPrice(event.address, event.params.toOracleVersion)
     const updateEvent = Updated.load(updatedId(event.address, event.params.account, event.params.toOracleVersion))
     if (updateEvent !== null) {
       updateEvent.valid = true
@@ -297,7 +298,7 @@ export function updateMarketAccountPosition(
       if (toMagnitude.gt(currentMagnitude)) {
         marketAccountPosition.openSize = marketAccountPosition.openSize.plus(toMagnitude.minus(currentMagnitude))
         marketAccountPosition.openNotional = marketAccountPosition.openNotional.plus(
-          mul(toMagnitude.minus(currentMagnitude), price(market, version).abs()),
+          mul(toMagnitude.minus(currentMagnitude), getOrCreateMarketVersionPrice(market, version).abs()),
         )
         marketAccountPosition.openPriceImpactFees = marketAccountPosition.openPriceImpactFees.plus(
           positionPrcessedEntity.priceImpactFee,
@@ -370,7 +371,7 @@ export function handlePositionProcessed(event: PositionProcessedEvent): void {
   const toVersionData = marketContract.versions(event.params.toOracleVersion)
   if (toVersionData.valid) {
     entity.toVersionValid = true
-    entity.toVersionPrice = price(event.address, event.params.toOracleVersion)
+    entity.toVersionPrice = getOrCreateMarketVersionPrice(event.address, event.params.toOracleVersion)
   } else {
     entity.toVersionValid = false
     entity.toVersionPrice = BigInt.zero()
@@ -380,7 +381,7 @@ export function handlePositionProcessed(event: PositionProcessedEvent): void {
   entity.fromMaker = marketGlobalPosition.maker
   entity.fromLong = marketGlobalPosition.long
   entity.fromShort = marketGlobalPosition.short
-  entity.fromVersionPrice = price(event.address, marketGlobalPosition.timestamp)
+  entity.fromVersionPrice = getOrCreateMarketVersionPrice(event.address, marketGlobalPosition.timestamp)
 
   entity.save()
 
@@ -441,6 +442,23 @@ export function handlePositionProcessed(event: PositionProcessedEvent): void {
     longDelta,
     shortDelta,
   )
+}
+
+function getOrCreateMarketVersionPrice(market: Address, version: BigInt): BigInt {
+  const id = market
+    .toHexString()
+    .concat(':')
+    .concat(version.toString())
+  let marketVersionPrice = MarketVersionPrice.load(id)
+  if (marketVersionPrice === null) {
+    marketVersionPrice = new MarketVersionPrice(id)
+    marketVersionPrice.market = market
+    marketVersionPrice.version = version
+    marketVersionPrice.price = price(market, version)
+    marketVersionPrice.save()
+  }
+
+  return marketVersionPrice.price
 }
 
 function marketAccumulatorId(market: Address, version: BigInt): string {
@@ -577,6 +595,7 @@ export function handleUpdated(event: UpdatedEvent): void {
   entity.localPositionId = local.currentId
   entity.valid = false
   entity.price = BigInt.zero()
+  entity.latestPrice = latestPrice(event.address) // Price at time of update, used for fee calcs
   entity.positionFee = pendingPosition.fee
   entity.priceImpactFee = BigInt.zero()
   entity.interfaceFee = BigInt.zero()

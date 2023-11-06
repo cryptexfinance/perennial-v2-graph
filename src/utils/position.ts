@@ -28,3 +28,15 @@ export function price(market: Address, version: BigInt): BigInt {
 
   return PayoffProvider.bind(payoffAddress).payoff(price.price)
 }
+
+export function latestPrice(market: Address): BigInt {
+  const marketContract = Market.bind(market)
+  const oracleContract = OracleProvider.bind(marketContract.oracle())
+  const price = oracleContract.latest()
+  const payoffAddress = marketContract.payoff()
+  if (payoffAddress.equals(Address.zero())) {
+    return price.price
+  }
+
+  return PayoffProvider.bind(payoffAddress).payoff(price.price)
+}
