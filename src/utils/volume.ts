@@ -4,6 +4,7 @@ import { BucketedVolume, PositionProcessed } from '../../generated/schema'
 import { PositionProcessed as PositionProcessedEvent } from '../../generated/templates/Market/Market'
 
 let VOLUME_STAT_BASE = 'Volume:'
+export const SECONDS_PER_YEAR = BigInt.fromI64(31536000)
 
 export function updateBucketedVolumes(
   entity: PositionProcessed,
@@ -103,33 +104,33 @@ export function updateBucketedVolumes(
     const makerNotional = mul(fromMaker, fromPrice).abs()
     if (makerNotional.gt(BigInt.zero())) {
       bucketedStat.weightedMakerFunding = bucketedStat.weightedMakerFunding.plus(
-        div(mul(entity.accumulationResult_fundingMaker, weight), makerNotional),
+        div(entity.accumulationResult_fundingMaker.times(SECONDS_PER_YEAR), makerNotional),
       )
       bucketedStat.weightedMakerInterest = bucketedStat.weightedMakerInterest.plus(
-        div(mul(entity.accumulationResult_interestMaker, weight), makerNotional),
+        div(entity.accumulationResult_interestMaker.times(SECONDS_PER_YEAR), makerNotional),
       )
       bucketedStat.weightedMakerPositionFees = bucketedStat.weightedMakerPositionFees.plus(
-        div(mul(entity.accumulationResult_positionFeeMaker, weight), makerNotional),
+        div(entity.accumulationResult_positionFeeMaker.times(SECONDS_PER_YEAR), makerNotional),
       )
     }
 
     const longNotional = mul(fromLong, fromPrice).abs()
     if (longNotional.gt(BigInt.zero())) {
       bucketedStat.weightedLongFunding = bucketedStat.weightedLongFunding.plus(
-        div(mul(entity.accumulationResult_fundingLong, weight), longNotional),
+        div(entity.accumulationResult_fundingLong.times(SECONDS_PER_YEAR), longNotional),
       )
       bucketedStat.weightedLongInterest = bucketedStat.weightedLongInterest.plus(
-        div(mul(entity.accumulationResult_interestLong, weight), longNotional),
+        div(entity.accumulationResult_interestLong.times(SECONDS_PER_YEAR), longNotional),
       )
     }
 
     const shortNotional = mul(fromShort, fromPrice).abs()
     if (shortNotional.gt(BigInt.zero())) {
       bucketedStat.weightedShortFunding = bucketedStat.weightedShortFunding.plus(
-        div(mul(entity.accumulationResult_fundingShort, weight), shortNotional),
+        div(entity.accumulationResult_fundingShort.times(SECONDS_PER_YEAR), shortNotional),
       )
       bucketedStat.weightedShortInterest = bucketedStat.weightedShortInterest.plus(
-        div(mul(entity.accumulationResult_interestShort, weight), shortNotional),
+        div(entity.accumulationResult_interestShort.times(SECONDS_PER_YEAR), shortNotional),
       )
     }
 

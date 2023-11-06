@@ -31,9 +31,9 @@ import {
   MarketAccountCheckpoint,
   MarketVersionPrice,
 } from '../generated/schema'
-import { accumulatorAccumulated, accumulatorIncrement, mul, div, fromBig18 } from './utils/big6Math'
+import { accumulatorAccumulated, accumulatorIncrement, mul, div, fromBig18, BASE } from './utils/big6Math'
 import { latestPrice, magnitude, price, side } from './utils/position'
-import { updateBucketedVolumes } from './utils/volume'
+import { SECONDS_PER_YEAR, updateBucketedVolumes } from './utils/volume'
 import { KeeperCall } from '../generated/MultiInvoker/MultiInvoker'
 
 // event FeeCharged(address indexed account, address indexed to, UFixed6 amount)
@@ -216,14 +216,18 @@ export function updateMarketAccountPosition(
   const weight = event.params.toOracleVersion.minus(event.params.fromOracleVersion)
   marketAccountPosition.totalWeight = marketAccountPosition.totalWeight.plus(weight)
   if (positionPrcessedEntity.collateral.gt(BigInt.zero())) {
+    // annualize values
     marketAccountPosition.weightedFunding = marketAccountPosition.weightedFunding.plus(
-      div(mul(positionPrcessedEntity.accumulatedFunding, weight), positionPrcessedEntity.collateral),
+      div(positionPrcessedEntity.accumulatedFunding.times(SECONDS_PER_YEAR), positionPrcessedEntity.collateral),
     )
     marketAccountPosition.weightedInterest = marketAccountPosition.weightedInterest.plus(
-      div(mul(positionPrcessedEntity.accumulatedInterest, weight), positionPrcessedEntity.collateral),
+      div(positionPrcessedEntity.accumulatedInterest.times(SECONDS_PER_YEAR), positionPrcessedEntity.collateral),
     )
     marketAccountPosition.weightedMakerPositionFees = marketAccountPosition.weightedMakerPositionFees.plus(
-      div(mul(positionPrcessedEntity.accumulatedMakerPositionFee, weight), positionPrcessedEntity.collateral),
+      div(
+        positionPrcessedEntity.accumulatedMakerPositionFee.times(SECONDS_PER_YEAR),
+        positionPrcessedEntity.collateral,
+      ),
     )
   }
 
