@@ -30,6 +30,7 @@ import {
   Updated,
   MarketAccountCheckpoint,
   MarketVersionPrice,
+  AccountGlobalAccumulator,
 } from '../generated/schema'
 import { accumulatorAccumulated, accumulatorIncrement, mul, div, fromBig18, BASE } from './utils/big6Math'
 import { latestPrice, magnitude, price, side } from './utils/position'
@@ -248,6 +249,7 @@ export function updateMarketAccountPosition(
   )
   const currentSide = side(marketAccountPosition.maker, marketAccountPosition.long, marketAccountPosition.short)
 
+  let notionalVolume = BigInt.zero()
   if (event.params.fromPosition.lt(event.params.toPosition)) {
     let toPosition = marketContract.pendingPositions(event.params.account, event.params.toPosition)
     // If valid, transition the position with invalidation
@@ -301,10 +303,21 @@ export function updateMarketAccountPosition(
       }
       if (toMagnitude.gt(currentMagnitude)) {
         marketAccountPosition.openSize = marketAccountPosition.openSize.plus(toMagnitude.minus(currentMagnitude))
-        marketAccountPosition.openNotional = marketAccountPosition.openNotional.plus(
-          mul(toMagnitude.minus(currentMagnitude), getOrCreateMarketVersionPrice(market, version).abs()),
-        )
+        notionalVolume = mul(toMagnitude.minus(currentMagnitude), getOrCreateMarketVersionPrice(market, version).abs())
+        marketAccountPosition.openNotional = marketAccountPosition.openNotional.plus(notionalVolume)
         marketAccountPosition.openPriceImpactFees = marketAccountPosition.openPriceImpactFees.plus(
+          positionPrcessedEntity.priceImpactFee,
+        )
+      } else if (toMagnitude.lt(currentMagnitude)) {
+        marketAccountPosition.closeSize = marketAccountPosition.closeSize
+          .plus(toMagnitude.minus(currentMagnitude))
+          .abs()
+        notionalVolume = mul(
+          toMagnitude.minus(currentMagnitude).abs(),
+          getOrCreateMarketVersionPrice(market, version).abs(),
+        )
+        marketAccountPosition.closeNotional = marketAccountPosition.closeNotional.plus(notionalVolume)
+        marketAccountPosition.closePriceImpactFees = marketAccountPosition.closePriceImpactFees.plus(
           positionPrcessedEntity.priceImpactFee,
         )
       }
@@ -334,6 +347,8 @@ export function updateMarketAccountPosition(
 
   // Save updates
   marketAccountPosition.save()
+
+  updateAccountGlobalAccumulator(event, positionPrcessedEntity, notionalVolume)
 }
 
 function positionProcessedID(market: Address, fromOracleVersion: BigInt): string {
@@ -649,6 +664,15 @@ export function handleUpdated(event: UpdatedEvent): void {
   latestPosition.pendingShort = event.params.newShort
   latestPosition.save()
 
+  const accountGlobalAccumulator = getOrCreateAccountGlobalAccumulator(
+    event.params.account,
+    event.block.number,
+    event.block.timestamp,
+    event.params.version,
+  )
+  accountGlobalAccumulator.netDeposits = accountGlobalAccumulator.netDeposits.plus(event.params.collateral)
+  accountGlobalAccumulator.save()
+
   const globalLatestPosition = getOrCreateMarketGlobalPosition(event.address)
   const globalPending = market.pendingPosition(global.currentId)
   globalLatestPosition.pendingMaker = globalPending.maker
@@ -705,6 +729,9 @@ function getOrCreateMarketAccountPosition(
     marketAccountPosition.openSize = BigInt.zero()
     marketAccountPosition.openNotional = BigInt.zero()
     marketAccountPosition.openPriceImpactFees = BigInt.zero()
+    marketAccountPosition.closeSize = BigInt.zero()
+    marketAccountPosition.closeNotional = BigInt.zero()
+    marketAccountPosition.closePriceImpactFees = BigInt.zero()
     marketAccountPosition.weightedFunding = BigInt.zero()
     marketAccountPosition.weightedInterest = BigInt.zero()
     marketAccountPosition.weightedMakerPositionFees = BigInt.zero()
@@ -717,6 +744,130 @@ function getOrCreateMarketAccountPosition(
   }
 
   return marketAccountPosition
+}
+
+function updateAccountGlobalAccumulator(
+  event: AccountPositionProcessedEvent,
+  positionPrcessedEntity: AccountPositionProcessed,
+  notionalVolume: BigInt,
+): void {
+  const entity = getOrCreateAccountGlobalAccumulator(
+    event.params.account,
+    event.block.number,
+    event.block.timestamp,
+    event.params.fromOracleVersion,
+  )
+  const side = positionPrcessedEntity.side
+  if (side === 'maker') {
+    entity.accumulatedMakerPnl = entity.accumulatedMakerPnl.plus(positionPrcessedEntity.accumulatedPnl)
+    entity.accumulatedMakerFunding = entity.accumulatedMakerFunding.plus(positionPrcessedEntity.accumulatedFunding)
+    entity.accumulatedMakerInterest = entity.accumulatedMakerInterest.plus(positionPrcessedEntity.accumulatedInterest)
+    entity.accumulatedMakerPositionFee = entity.accumulatedMakerPositionFee.plus(
+      positionPrcessedEntity.accumulatedMakerPositionFee,
+    )
+    entity.accumulatedMakerValue = entity.accumulatedMakerValue.plus(positionPrcessedEntity.accumulatedValue)
+    entity.accumulatedMakerReward = entity.accumulatedMakerReward.plus(positionPrcessedEntity.accumulatedReward)
+    entity.accumulatedMakerCollateral = entity.accumulatedMakerCollateral.plus(
+      positionPrcessedEntity.accumulationResult_collateralAmount,
+    )
+  } else if (side === 'long') {
+    entity.accumulatedLongPnl = entity.accumulatedLongPnl.plus(positionPrcessedEntity.accumulatedPnl)
+    entity.accumulatedLongFunding = entity.accumulatedLongFunding.plus(positionPrcessedEntity.accumulatedFunding)
+    entity.accumulatedLongInterest = entity.accumulatedLongInterest.plus(positionPrcessedEntity.accumulatedInterest)
+    entity.accumulatedLongValue = entity.accumulatedLongValue.plus(positionPrcessedEntity.accumulatedValue)
+    entity.accumulatedLongReward = entity.accumulatedLongReward.plus(positionPrcessedEntity.accumulatedReward)
+    entity.accumulatedLongCollateral = entity.accumulatedLongCollateral.plus(
+      positionPrcessedEntity.accumulationResult_collateralAmount,
+    )
+    entity.longNotionalVolume = entity.longNotionalVolume.plus(notionalVolume)
+    if (notionalVolume.notEqual(BigInt.zero())) entity.longTrades = entity.longTrades.plus(BigInt.fromI32(1))
+  } else if (side === 'short') {
+    entity.accumulatedShortPnl = entity.accumulatedShortPnl.plus(positionPrcessedEntity.accumulatedPnl)
+    entity.accumulatedShortFunding = entity.accumulatedShortFunding.plus(positionPrcessedEntity.accumulatedFunding)
+    entity.accumulatedShortInterest = entity.accumulatedShortInterest.plus(positionPrcessedEntity.accumulatedInterest)
+    entity.accumulatedShortValue = entity.accumulatedShortValue.plus(positionPrcessedEntity.accumulatedValue)
+    entity.accumulatedShortReward = entity.accumulatedShortReward.plus(positionPrcessedEntity.accumulatedReward)
+    entity.accumulatedShortCollateral = entity.accumulatedShortCollateral.plus(
+      positionPrcessedEntity.accumulationResult_collateralAmount,
+    )
+    entity.shortNotionalVolume = entity.shortNotionalVolume.plus(notionalVolume)
+    if (notionalVolume.notEqual(BigInt.zero())) entity.shortTrades = entity.shortTrades.plus(BigInt.fromI32(1))
+  }
+
+  if (side === 'long' || side === 'short') {
+    entity.accumulatedTakerPnl = entity.accumulatedTakerPnl.plus(positionPrcessedEntity.accumulatedPnl)
+    entity.accumulatedTakerFunding = entity.accumulatedTakerFunding.plus(positionPrcessedEntity.accumulatedFunding)
+    entity.accumulatedTakerInterest = entity.accumulatedTakerInterest.plus(positionPrcessedEntity.accumulatedInterest)
+    entity.accumulatedTakerValue = entity.accumulatedTakerValue.plus(positionPrcessedEntity.accumulatedValue)
+    entity.accumulatedTakerReward = entity.accumulatedTakerReward.plus(positionPrcessedEntity.accumulatedReward)
+    entity.accumulatedTakerCollateral = entity.accumulatedTakerCollateral.plus(
+      positionPrcessedEntity.accumulationResult_collateralAmount,
+    )
+    entity.takerNotionalVolume = entity.takerNotionalVolume.plus(notionalVolume)
+    if (notionalVolume.notEqual(BigInt.zero())) entity.takerTrades = entity.takerTrades.plus(BigInt.fromI32(1))
+  }
+
+  entity.lastUpdatedBlockNumber = event.block.number
+  entity.lastUpdatedBlockTimestamp = event.block.timestamp
+  entity.lastUpdatedVersion = event.params.fromOracleVersion
+
+  entity.save()
+}
+function getOrCreateAccountGlobalAccumulator(
+  account: Address,
+  blockNumber: BigInt,
+  timestamp: BigInt,
+  version: BigInt,
+): AccountGlobalAccumulator {
+  let accountGlobalAccumulator = AccountGlobalAccumulator.load(account.toHexString())
+  if (accountGlobalAccumulator === null) {
+    accountGlobalAccumulator = new AccountGlobalAccumulator(account.toHexString())
+    accountGlobalAccumulator.account = account
+
+    accountGlobalAccumulator.accumulatedMakerPnl = BigInt.zero()
+    accountGlobalAccumulator.accumulatedMakerFunding = BigInt.zero()
+    accountGlobalAccumulator.accumulatedMakerInterest = BigInt.zero()
+    accountGlobalAccumulator.accumulatedMakerPositionFee = BigInt.zero()
+    accountGlobalAccumulator.accumulatedMakerValue = BigInt.zero()
+    accountGlobalAccumulator.accumulatedMakerReward = BigInt.zero()
+    accountGlobalAccumulator.accumulatedMakerCollateral = BigInt.zero()
+
+    accountGlobalAccumulator.accumulatedLongPnl = BigInt.zero()
+    accountGlobalAccumulator.accumulatedLongFunding = BigInt.zero()
+    accountGlobalAccumulator.accumulatedLongInterest = BigInt.zero()
+    accountGlobalAccumulator.accumulatedLongValue = BigInt.zero()
+    accountGlobalAccumulator.accumulatedLongReward = BigInt.zero()
+    accountGlobalAccumulator.accumulatedLongCollateral = BigInt.zero()
+    accountGlobalAccumulator.longNotionalVolume = BigInt.zero()
+    accountGlobalAccumulator.longTrades = BigInt.zero()
+
+    accountGlobalAccumulator.accumulatedShortPnl = BigInt.zero()
+    accountGlobalAccumulator.accumulatedShortFunding = BigInt.zero()
+    accountGlobalAccumulator.accumulatedShortInterest = BigInt.zero()
+    accountGlobalAccumulator.accumulatedShortValue = BigInt.zero()
+    accountGlobalAccumulator.accumulatedShortReward = BigInt.zero()
+    accountGlobalAccumulator.accumulatedShortCollateral = BigInt.zero()
+    accountGlobalAccumulator.shortNotionalVolume = BigInt.zero()
+    accountGlobalAccumulator.shortTrades = BigInt.zero()
+
+    accountGlobalAccumulator.accumulatedTakerPnl = BigInt.zero()
+    accountGlobalAccumulator.accumulatedTakerFunding = BigInt.zero()
+    accountGlobalAccumulator.accumulatedTakerInterest = BigInt.zero()
+    accountGlobalAccumulator.accumulatedTakerValue = BigInt.zero()
+    accountGlobalAccumulator.accumulatedTakerReward = BigInt.zero()
+    accountGlobalAccumulator.accumulatedTakerCollateral = BigInt.zero()
+    accountGlobalAccumulator.takerNotionalVolume = BigInt.zero()
+    accountGlobalAccumulator.takerTrades = BigInt.zero()
+
+    accountGlobalAccumulator.netDeposits = BigInt.zero()
+
+    accountGlobalAccumulator.lastUpdatedVersion = version
+    accountGlobalAccumulator.lastUpdatedBlockNumber = blockNumber
+    accountGlobalAccumulator.lastUpdatedBlockTimestamp = timestamp
+    accountGlobalAccumulator.save()
+  }
+
+  return accountGlobalAccumulator
 }
 
 function getOrCreateMarketGlobalPosition(market: Address): MarketGlobalPosition {

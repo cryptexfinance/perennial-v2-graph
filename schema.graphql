@@ -445,6 +445,9 @@ type MarketAccountPosition @entity {
   openSize: BigInt!
   openNotional: BigInt!
   openPriceImpactFees: BigInt!
+  closeSize: BigInt!
+  closeNotional: BigInt!
+  closePriceImpactFees: BigInt!
   weightedFunding: BigInt!
   weightedInterest: BigInt!
   weightedMakerPositionFees: BigInt!
@@ -488,6 +491,9 @@ type MarketAccountCheckpoint @entity {
   openSize: BigInt!
   openNotional: BigInt!
   openPriceImpactFees: BigInt!
+  closeSize: BigInt!
+  closeNotional: BigInt!
+  closePriceImpactFees: BigInt!
   weightedFunding: BigInt!
   weightedInterest: BigInt!
   weightedMakerPositionFees: BigInt!
@@ -518,6 +524,53 @@ type MarketVersionPrice @entity(immutable: true) {
   market: Bytes! # address
   version: BigInt! # uint256
   price: BigInt! # uint256
+}
+
+type AccountGlobalAccumulator @entity {
+  id: String! # account
+  account: Bytes! # address
+  accumulatedMakerPnl: BigInt!
+  accumulatedMakerFunding: BigInt!
+  accumulatedMakerInterest: BigInt!
+  accumulatedMakerPositionFee: BigInt! # only if maker
+  accumulatedMakerValue: BigInt!
+  accumulatedMakerReward: BigInt!
+  accumulatedMakerCollateral: BigInt!
+
+  accumulatedLongPnl: BigInt!
+  accumulatedLongFunding: BigInt!
+  accumulatedLongInterest: BigInt!
+  accumulatedLongValue: BigInt!
+  accumulatedLongReward: BigInt!
+  accumulatedLongCollateral: BigInt!
+  longNotionalVolume: BigInt!
+  longTrades: BigInt!
+
+  accumulatedShortPnl: BigInt!
+  accumulatedShortFunding: BigInt!
+  accumulatedShortInterest: BigInt!
+  accumulatedShortValue: BigInt!
+  accumulatedShortReward: BigInt!
+  accumulatedShortCollateral: BigInt!
+  shortNotionalVolume: BigInt!
+  shortTrades: BigInt!
+
+  # Long + Short Values
+  accumulatedTakerPnl: BigInt!
+  accumulatedTakerFunding: BigInt!
+  accumulatedTakerInterest: BigInt!
+  accumulatedTakerValue: BigInt!
+  accumulatedTakerReward: BigInt!
+  accumulatedTakerCollateral: BigInt!
+  takerNotionalVolume: BigInt!
+  takerTrades: BigInt!
+
+  # net deposits can't be tagged with a side since we don't know which side the deposit is for
+  netDeposits: BigInt!
+
+  lastUpdatedVersion: BigInt!
+  lastUpdatedBlockNumber: BigInt!
+  lastUpdatedBlockTimestamp: BigInt!
 }
 
 enum Bucket {

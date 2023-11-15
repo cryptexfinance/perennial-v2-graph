@@ -1,6 +1,6 @@
 {
   "name": "perennial-v2",
-  "version": "1.0.0-rc14",
+  "version": "1.0.0-rc16",
   "license": "UNLICENSED",
   "scripts": {
     "codegen": "graph codegen",
