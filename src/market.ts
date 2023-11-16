@@ -355,7 +355,9 @@ export function updateMarketAccountPosition(
   // Save updates
   marketAccountPosition.save()
 
-  updateAccountGlobalAccumulator(event, positionPrcessedEntity, currentSide, notionalVolume)
+  const newSide = side(marketAccountPosition.maker, marketAccountPosition.long, marketAccountPosition.short)
+  if (currentSide !== 'none') updateAccountGlobalAccumulator(event, positionPrcessedEntity, currentSide, notionalVolume)
+  else updateAccountGlobalAccumulator(event, positionPrcessedEntity, newSide, notionalVolume)
 }
 
 function positionProcessedID(market: Address, fromOracleVersion: BigInt): string {
@@ -616,15 +618,30 @@ export function handleUpdated(event: UpdatedEvent): void {
   const global = market.global()
   const local = market.locals(event.params.account)
   const pendingPosition = market.pendingPositions(event.params.account, local.currentId)
+  const latestPosition = getOrCreateMarketAccountPosition(
+    event.address,
+    event.params.account,
+    event.block.number,
+    event.block.timestamp,
+    event.params.version,
+  )
 
   entity.globalPositionId = global.currentId
   entity.localPositionId = local.currentId
   entity.valid = false
   entity.price = BigInt.zero()
-  // Optimistic delta update based on pending position
-  entity.delta = magnitude(entity.newMaker, entity.newLong, entity.newShort).minus(
-    magnitude(pendingPosition.maker, pendingPosition.long, pendingPosition.short),
+  // Optimistic delta update based on pending position and invalidation
+  const fromSide = side(latestPosition.maker, latestPosition.long, latestPosition.short)
+  const fromMagnitude = magnitude(
+    pendingPosition.maker.plus(latestPosition.makerInvalidation.minus(pendingPosition.invalidation.maker)),
+    pendingPosition.long.plus(latestPosition.longInvalidation.minus(pendingPosition.invalidation.long)),
+    pendingPosition.short.plus(latestPosition.shortInvalidation.minus(pendingPosition.invalidation.short)),
   )
+  entity.delta = magnitude(entity.newMaker, entity.newLong, entity.newShort).minus(fromMagnitude)
+  // Set side as previous side or new side (if previous side is none)
+  if (fromSide !== 'none') entity.side = fromSide
+  else entity.side = side(entity.newMaker, entity.newLong, entity.newShort)
+
   entity.latestPrice = latestPrice(event.address) // Price at time of update, used for fee calcs
   entity.positionFee = pendingPosition.fee
   entity.priceImpactFee = BigInt.zero()
@@ -657,15 +674,8 @@ export function handleUpdated(event: UpdatedEvent): void {
 
   entity.save()
 
-  // Pull latest user position and update net deposits and collateral
+  // update latest position net deposits, collateral, and pending values
   // All other fields are updated after settlement occurs
-  const latestPosition = getOrCreateMarketAccountPosition(
-    event.address,
-    event.params.account,
-    event.block.number,
-    event.block.timestamp,
-    event.params.version,
-  )
   latestPosition.netDeposits = latestPosition.netDeposits.plus(event.params.collateral)
   latestPosition.collateral = latestPosition.collateral.plus(event.params.collateral)
   latestPosition.accumulatedInterfaceFees = latestPosition.accumulatedInterfaceFees.plus(entity.interfaceFee)
