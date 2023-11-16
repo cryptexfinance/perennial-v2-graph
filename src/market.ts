@@ -145,20 +145,27 @@ export function handleAccountPositionProcessed(event: AccountPositionProcessedEv
   }
 
   const toVersionData = Market.bind(event.address).versions(event.params.toOracleVersion)
+  const updateEvent = Updated.load(updatedId(event.address, event.params.account, event.params.toOracleVersion))
+
   if (toVersionData.valid) {
     entity.toVersionValid = true
     entity.toVersionPrice = getOrCreateMarketVersionPrice(event.address, event.params.toOracleVersion)
-    const updateEvent = Updated.load(updatedId(event.address, event.params.account, event.params.toOracleVersion))
     if (updateEvent !== null) {
       updateEvent.valid = true
       updateEvent.price = entity.toVersionPrice
       updateEvent.positionFee = entity.accumulationResult_positionFee
       updateEvent.priceImpactFee = entity.priceImpactFee
+      updateEvent.delta = magnitude(updateEvent.newMaker, updateEvent.newLong, updateEvent.newShort).minus(entity.size)
       updateEvent.save()
     }
   } else {
     entity.toVersionValid = false
     entity.toVersionPrice = BigInt.zero()
+    // reset update to 0 delta if invalid
+    if (updateEvent !== null) {
+      updateEvent.delta = BigInt.zero()
+      updateEvent.save()
+    }
   }
 
   entity.save()
@@ -348,7 +355,7 @@ export function updateMarketAccountPosition(
   // Save updates
   marketAccountPosition.save()
 
-  updateAccountGlobalAccumulator(event, positionPrcessedEntity, notionalVolume)
+  updateAccountGlobalAccumulator(event, positionPrcessedEntity, currentSide, notionalVolume)
 }
 
 function positionProcessedID(market: Address, fromOracleVersion: BigInt): string {
@@ -614,6 +621,10 @@ export function handleUpdated(event: UpdatedEvent): void {
   entity.localPositionId = local.currentId
   entity.valid = false
   entity.price = BigInt.zero()
+  // Optimistic delta update based on pending position
+  entity.delta = magnitude(entity.newMaker, entity.newLong, entity.newShort).minus(
+    magnitude(pendingPosition.maker, pendingPosition.long, pendingPosition.short),
+  )
   entity.latestPrice = latestPrice(event.address) // Price at time of update, used for fee calcs
   entity.positionFee = pendingPosition.fee
   entity.priceImpactFee = BigInt.zero()
@@ -749,6 +760,7 @@ function getOrCreateMarketAccountPosition(
 function updateAccountGlobalAccumulator(
   event: AccountPositionProcessedEvent,
   positionPrcessedEntity: AccountPositionProcessed,
+  currentSide: string,
   notionalVolume: BigInt,
 ): void {
   const entity = getOrCreateAccountGlobalAccumulator(
@@ -757,8 +769,7 @@ function updateAccountGlobalAccumulator(
     event.block.timestamp,
     event.params.fromOracleVersion,
   )
-  const side = positionPrcessedEntity.side
-  if (side === 'maker') {
+  if (currentSide === 'maker') {
     entity.accumulatedMakerPnl = entity.accumulatedMakerPnl.plus(positionPrcessedEntity.accumulatedPnl)
     entity.accumulatedMakerFunding = entity.accumulatedMakerFunding.plus(positionPrcessedEntity.accumulatedFunding)
     entity.accumulatedMakerInterest = entity.accumulatedMakerInterest.plus(positionPrcessedEntity.accumulatedInterest)
@@ -770,7 +781,7 @@ function updateAccountGlobalAccumulator(
     entity.accumulatedMakerCollateral = entity.accumulatedMakerCollateral.plus(
       positionPrcessedEntity.accumulationResult_collateralAmount,
     )
-  } else if (side === 'long') {
+  } else if (currentSide === 'long') {
     entity.accumulatedLongPnl = entity.accumulatedLongPnl.plus(positionPrcessedEntity.accumulatedPnl)
     entity.accumulatedLongFunding = entity.accumulatedLongFunding.plus(positionPrcessedEntity.accumulatedFunding)
     entity.accumulatedLongInterest = entity.accumulatedLongInterest.plus(positionPrcessedEntity.accumulatedInterest)
@@ -781,7 +792,7 @@ function updateAccountGlobalAccumulator(
     )
     entity.longNotionalVolume = entity.longNotionalVolume.plus(notionalVolume)
     if (notionalVolume.notEqual(BigInt.zero())) entity.longTrades = entity.longTrades.plus(BigInt.fromI32(1))
-  } else if (side === 'short') {
+  } else if (currentSide === 'short') {
     entity.accumulatedShortPnl = entity.accumulatedShortPnl.plus(positionPrcessedEntity.accumulatedPnl)
     entity.accumulatedShortFunding = entity.accumulatedShortFunding.plus(positionPrcessedEntity.accumulatedFunding)
     entity.accumulatedShortInterest = entity.accumulatedShortInterest.plus(positionPrcessedEntity.accumulatedInterest)
@@ -794,7 +805,7 @@ function updateAccountGlobalAccumulator(
     if (notionalVolume.notEqual(BigInt.zero())) entity.shortTrades = entity.shortTrades.plus(BigInt.fromI32(1))
   }
 
-  if (side === 'long' || side === 'short') {
+  if (currentSide === 'long' || currentSide === 'short') {
     entity.accumulatedTakerPnl = entity.accumulatedTakerPnl.plus(positionPrcessedEntity.accumulatedPnl)
     entity.accumulatedTakerFunding = entity.accumulatedTakerFunding.plus(positionPrcessedEntity.accumulatedFunding)
     entity.accumulatedTakerInterest = entity.accumulatedTakerInterest.plus(positionPrcessedEntity.accumulatedInterest)

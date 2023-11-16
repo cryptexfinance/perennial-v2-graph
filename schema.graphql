@@ -375,6 +375,7 @@ type Updated @entity {
   priceImpactFee: BigInt! # uint256
   interfaceFee: BigInt! # uint256
   orderFee: BigInt! # uint256
+  delta: BigInt! # int256
 }
 
 # Not immutable because we need to update the 'latest' value
@@ -412,6 +413,7 @@ enum PositionSide {
   maker
   long
   short
+  none
 }
 
 type MarketAccountPosition @entity {
