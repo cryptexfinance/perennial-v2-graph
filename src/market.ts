@@ -276,6 +276,28 @@ export function updateMarketAccountPosition(
         marketAccountPosition.long,
         marketAccountPosition.short,
       )
+
+      if (toMagnitude.gt(currentMagnitude)) {
+        marketAccountPosition.openSize = marketAccountPosition.openSize.plus(toMagnitude.minus(currentMagnitude))
+        notionalVolume = mul(toMagnitude.minus(currentMagnitude), getOrCreateMarketVersionPrice(market, version).abs())
+        marketAccountPosition.openNotional = marketAccountPosition.openNotional.plus(notionalVolume)
+        marketAccountPosition.openPriceImpactFees = marketAccountPosition.openPriceImpactFees.plus(
+          positionPrcessedEntity.priceImpactFee,
+        )
+      } else if (toMagnitude.lt(currentMagnitude)) {
+        marketAccountPosition.closeSize = marketAccountPosition.closeSize
+          .plus(toMagnitude.minus(currentMagnitude))
+          .abs()
+        notionalVolume = mul(
+          toMagnitude.minus(currentMagnitude).abs(),
+          getOrCreateMarketVersionPrice(market, version).abs(),
+        )
+        marketAccountPosition.closeNotional = marketAccountPosition.closeNotional.plus(notionalVolume)
+        marketAccountPosition.closePriceImpactFees = marketAccountPosition.closePriceImpactFees.plus(
+          positionPrcessedEntity.priceImpactFee,
+        )
+      }
+
       if (currentMagnitude.equals(BigInt.zero()) && toMagnitude.gt(BigInt.zero())) {
         const checkpointId = marketAccountPosition.id.concat(':').concat(version.toString())
         const checkpoint = new MarketAccountCheckpoint(checkpointId)
@@ -307,26 +329,6 @@ export function updateMarketAccountPosition(
         checkpoint.side = currentSide // Use current side since the new side is zero
         checkpoint.startMagnitude = BigInt.zero()
         checkpoint.save()
-      }
-      if (toMagnitude.gt(currentMagnitude)) {
-        marketAccountPosition.openSize = marketAccountPosition.openSize.plus(toMagnitude.minus(currentMagnitude))
-        notionalVolume = mul(toMagnitude.minus(currentMagnitude), getOrCreateMarketVersionPrice(market, version).abs())
-        marketAccountPosition.openNotional = marketAccountPosition.openNotional.plus(notionalVolume)
-        marketAccountPosition.openPriceImpactFees = marketAccountPosition.openPriceImpactFees.plus(
-          positionPrcessedEntity.priceImpactFee,
-        )
-      } else if (toMagnitude.lt(currentMagnitude)) {
-        marketAccountPosition.closeSize = marketAccountPosition.closeSize
-          .plus(toMagnitude.minus(currentMagnitude))
-          .abs()
-        notionalVolume = mul(
-          toMagnitude.minus(currentMagnitude).abs(),
-          getOrCreateMarketVersionPrice(market, version).abs(),
-        )
-        marketAccountPosition.closeNotional = marketAccountPosition.closeNotional.plus(notionalVolume)
-        marketAccountPosition.closePriceImpactFees = marketAccountPosition.closePriceImpactFees.plus(
-          positionPrcessedEntity.priceImpactFee,
-        )
       }
     }
 
