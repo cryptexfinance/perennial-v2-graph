@@ -277,21 +277,11 @@ export function updateMarketAccountPosition(
         marketAccountPosition.short,
       )
 
-      if (toMagnitude.gt(currentMagnitude)) {
-        marketAccountPosition.openSize = marketAccountPosition.openSize.plus(toMagnitude.minus(currentMagnitude))
-        notionalVolume = mul(toMagnitude.minus(currentMagnitude), getOrCreateMarketVersionPrice(market, version).abs())
-        marketAccountPosition.openNotional = marketAccountPosition.openNotional.plus(notionalVolume)
-        marketAccountPosition.openPriceImpactFees = marketAccountPosition.openPriceImpactFees.plus(
-          positionPrcessedEntity.priceImpactFee,
-        )
-      } else if (toMagnitude.lt(currentMagnitude)) {
-        marketAccountPosition.closeSize = marketAccountPosition.closeSize
-          .plus(toMagnitude.minus(currentMagnitude))
-          .abs()
-        notionalVolume = mul(
-          toMagnitude.minus(currentMagnitude).abs(),
-          getOrCreateMarketVersionPrice(market, version).abs(),
-        )
+      // Add to close size and notional before checkpointing
+      if (toMagnitude.lt(currentMagnitude)) {
+        const delta = toMagnitude.minus(currentMagnitude).abs()
+        marketAccountPosition.closeSize = marketAccountPosition.closeSize.plus(delta)
+        notionalVolume = mul(delta, getOrCreateMarketVersionPrice(market, version).abs())
         marketAccountPosition.closeNotional = marketAccountPosition.closeNotional.plus(notionalVolume)
         marketAccountPosition.closePriceImpactFees = marketAccountPosition.closePriceImpactFees.plus(
           positionPrcessedEntity.priceImpactFee,
@@ -329,6 +319,16 @@ export function updateMarketAccountPosition(
         checkpoint.side = currentSide // Use current side since the new side is zero
         checkpoint.startMagnitude = BigInt.zero()
         checkpoint.save()
+      }
+
+      // Add to open size and notional after checkpointing
+      if (toMagnitude.gt(currentMagnitude)) {
+        marketAccountPosition.openSize = marketAccountPosition.openSize.plus(toMagnitude.minus(currentMagnitude))
+        notionalVolume = mul(toMagnitude.minus(currentMagnitude), getOrCreateMarketVersionPrice(market, version).abs())
+        marketAccountPosition.openNotional = marketAccountPosition.openNotional.plus(notionalVolume)
+        marketAccountPosition.openPriceImpactFees = marketAccountPosition.openPriceImpactFees.plus(
+          positionPrcessedEntity.priceImpactFee,
+        )
       }
     }
 
