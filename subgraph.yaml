@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: MarketFactory
-    network: arbitrum-goerli
+    network: arbitrum-sepolia
     source:
       abi: MarketFactory
-      address: "0x8D8903B294B358BA1B5d91FB838e5dC35370c7D2"
-      startBlock: 41722035
+      address: "0x32F3aB7b3c5BBa0738b72FdB83FcE6bb1a1a943c"
+      startBlock: 2252368
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -51,11 +51,11 @@ dataSources:
       file: ./src/market-factory.ts
   - kind: ethereum
     name: OracleFactory
-    network: arbitrum-goerli
+    network: arbitrum-sepolia
     source:
       abi: OracleFactory
-      address: "0xaf09499A04a9A7c6E1fD5320ebd86E1A817d6D80"
-      startBlock: 41721929
+      address: "0x9d2CaE012AAe0aE00f4d8F42CD287a6923612456"
+      startBlock: 2252319
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -101,11 +101,11 @@ dataSources:
       file: ./src/oracle-factory.ts
   - kind: ethereum
     name: VaultFactory
-    network: arbitrum-goerli
+    network: arbitrum-sepolia
     source:
       abi: VaultFactory
-      address: "0x97B34BA2FD1ff8Ce18b3bC7b05D1fcb87E95D6fc"
-      startBlock: 41722116
+      address: "0x877682C7a8840D59A63a6227ED2Aeb20C3ae7FeB"
+      startBlock: 2252382
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -144,51 +144,83 @@ dataSources:
           handler: handleVaultCreated
       file: ./src/vault-factory.ts
   - kind: ethereum
-    name: MultiInvoker
-    network: arbitrum-goerli
+    name: MultiInvoker_v2.0
+    network: arbitrum-sepolia
     source:
       abi: MultiInvoker
-      address: "0x9F6f72Cf419121090C761D0488f61D2534Da4196"
-      startBlock: 41722121
+      address: "0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579"
+      startBlock: 2252386
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - FeeCharged
-        - MultiInvokerInitialized
-        - KeeperCall
-        - KeeperFeeCharged
-        - OrderCancelled
-        - OrderExecuted
-        - OrderPlaced
+        - MultiInvokerFeeCharged
+        - MultiInvokerKeeperCall_Deprecated
+        - MultiInvokerOrderCancelled
+        - MultiInvokerOrderExecuted
+        - MultiInvokerOrderPlaced
       abis:
         - name: MultiInvoker
           file: ./abis/MultiInvoker.json
       eventHandlers:
         - event: FeeCharged(indexed address,indexed address,uint256)
-          handler: handleFeeCharged
+          handler: handleFeeCharged_Deprecated
+        - event: KeeperCall(indexed address,uint256,uint256,uint256,uint256)
+          handler: handleKeeperCall_Deprecated
+        - event: OrderExecuted(indexed address,indexed address,uint256,uint256)
+          handler: handleOrderExecuted_Deprecated
+        - event: OrderPlaced(indexed address,indexed address,indexed
+            uint256,(uint8,int8,uint256,int256,int256))
+          handler: handleOrderPlaced_Deprecated
+      file: ./src/multi-invoker.ts
+  - kind: ethereum
+    name: MultiInvoker
+    network: arbitrum-sepolia
+    source:
+      abi: MultiInvoker
+      address: "0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579"
+      startBlock: 2252386
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MultiInvokerFeeCharged
+        - MultiInvokerInitialized
+        - MultiInvokerKeeperCall
+        - MultiInvokerKeeperFeeCharged
+        - MultiInvokerOrderCancelled
+        - MultiInvokerOrderExecuted
+        - MultiInvokerOrderPlaced
+      abis:
+        - name: MultiInvoker
+          file: ./abis/v2.1/MultiInvoker.json
+      eventHandlers:
+        - event: InterfaceFeeCharged(indexed address,indexed
+            address,(uint256,address,bool))
+          handler: handleInterfaceFeeCharged
         - event: Initialized(uint256)
           handler: handleInitialized
-        - event: KeeperCall(indexed address,uint256,uint256,uint256,uint256)
+        - event: KeeperCall(indexed address,uint256,uint256,uint256,uint256,uint256)
           handler: handleKeeperCall
         - event: KeeperFeeCharged(indexed address,indexed address,indexed address,uint256)
           handler: handleKeeperFeeCharged
         - event: OrderCancelled(indexed address,indexed address,uint256)
           handler: handleOrderCancelled
-        - event: OrderExecuted(indexed address,indexed address,uint256,uint256)
+        - event: OrderExecuted(indexed address,indexed address,uint256)
           handler: handleOrderExecuted
         - event: OrderPlaced(indexed address,indexed address,indexed
-            uint256,(uint8,int8,uint256,int256,int256))
+            uint256,(uint8,int8,uint256,int256,int256,(uint256,address,bool)))
           handler: handleOrderPlaced
       file: ./src/multi-invoker.ts
   - kind: ethereum
     name: PythFactory
-    network: arbitrum-goerli
+    network: arbitrum-sepolia
     source:
       abi: PythFactory
-      address: "0x2FFf529AAD20BD1DA5Ab5789b0B02811E3Ee68c5"
-      startBlock: 41721940
+      address: "0x92F8d5B8d0ca2fc699c7c540471Ad49724a68007"
+      startBlock: 2252336
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -229,7 +261,7 @@ dataSources:
 templates:
   - kind: ethereum
     name: Market
-    network: arbitrum-goerli
+    network: arbitrum-sepolia
     source:
       abi: Market
     mapping:
@@ -285,7 +317,7 @@ templates:
       file: ./src/market.ts
   - kind: ethereum
     name: Vault
-    network: arbitrum-goerli
+    network: arbitrum-sepolia
     source:
       abi: Vault
     mapping:
@@ -315,7 +347,7 @@ templates:
       file: ./src/vault.ts
   - kind: ethereum
     name: PythOracle
-    network: arbitrum-goerli
+    network: arbitrum-sepolia
     source:
       abi: PythOracle
     mapping:
