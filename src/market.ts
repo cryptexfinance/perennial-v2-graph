@@ -35,7 +35,6 @@ import {
 import { accumulatorAccumulated, accumulatorIncrement, mul, div, fromBig18, BASE } from './utils/big6Math'
 import { latestPrice, magnitude, price, side } from './utils/position'
 import { SECONDS_PER_YEAR, updateBucketedVolumes } from './utils/volume'
-import { KeeperCall } from '../generated/MultiInvoker/MultiInvoker'
 
 // event FeeCharged(address indexed account, address indexed to, UFixed6 amount)
 const INTERFACE_FEE_TOPIC = Bytes.fromHexString('0x945458c62aa39df7a4d87d6c4dbaaab7de5d870c9a1fe40e2b7571d84f158a8d')
@@ -601,6 +600,7 @@ export function handleUpdated(event: UpdatedEvent): void {
   if (entity === null) {
     entity = new Updated(id)
   }
+  const market = Market.bind(event.address)
 
   entity.market = event.address
   entity.sender = event.params.sender
@@ -611,12 +611,18 @@ export function handleUpdated(event: UpdatedEvent): void {
   entity.newShort = event.params.newShort
   entity.collateral = event.params.collateral
   entity.protect = event.params.protect
+  entity.liquidationFee = BigInt.zero()
+  if (entity.protect && entity.collateral.lt(BigInt.zero())) {
+    entity.liquidationFee = entity.collateral.abs()
+  } else if (entity.protect) {
+    const local = market.try_locals1(event.params.account)
+    if (!local.reverted) entity.liquidationFee = local.value.protectionAmount
+  }
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
 
-  const market = Market.bind(event.address)
   const global = market.global()
   const local = market.locals(event.params.account)
   const pendingPosition = market.pendingPositions(event.params.account, local.currentId)

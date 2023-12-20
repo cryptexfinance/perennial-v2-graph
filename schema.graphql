@@ -377,6 +377,7 @@ type Updated @entity {
   orderFee: BigInt! # uint256
   delta: BigInt! # int256
   side: PositionSide!
+  liquidationFee: BigInt! # uint256
 }
 
 # Not immutable because we need to update the 'latest' value

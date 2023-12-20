@@ -7,7 +7,7 @@ dataSources:
     network: arbitrum-sepolia
     source:
       abi: MarketFactory
-      address: "0x32F3aB7b3c5BBa0738b72FdB83FcE6bb1a1a943c"
+      address: '0x32F3aB7b3c5BBa0738b72FdB83FcE6bb1a1a943c'
       startBlock: 2252368
     mapping:
       kind: ethereum/events
@@ -54,7 +54,7 @@ dataSources:
     network: arbitrum-sepolia
     source:
       abi: OracleFactory
-      address: "0x9d2CaE012AAe0aE00f4d8F42CD287a6923612456"
+      address: '0x9d2CaE012AAe0aE00f4d8F42CD287a6923612456'
       startBlock: 2252319
     mapping:
       kind: ethereum/events
@@ -104,7 +104,7 @@ dataSources:
     network: arbitrum-sepolia
     source:
       abi: VaultFactory
-      address: "0x877682C7a8840D59A63a6227ED2Aeb20C3ae7FeB"
+      address: '0x877682C7a8840D59A63a6227ED2Aeb20C3ae7FeB'
       startBlock: 2252382
     mapping:
       kind: ethereum/events
@@ -148,7 +148,7 @@ dataSources:
     network: arbitrum-sepolia
     source:
       abi: MultiInvoker
-      address: "0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579"
+      address: '0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579'
       startBlock: 2252386
     mapping:
       kind: ethereum/events
@@ -179,7 +179,7 @@ dataSources:
     network: arbitrum-sepolia
     source:
       abi: MultiInvoker
-      address: "0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579"
+      address: '0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579'
       startBlock: 2252386
     mapping:
       kind: ethereum/events
@@ -219,7 +219,7 @@ dataSources:
     network: arbitrum-sepolia
     source:
       abi: PythFactory
-      address: "0x92F8d5B8d0ca2fc699c7c540471Ad49724a68007"
+      address: '0x92F8d5B8d0ca2fc699c7c540471Ad49724a68007'
       startBlock: 2252336
     mapping:
       kind: ethereum/events
@@ -289,7 +289,7 @@ templates:
           file: ./abis/PayoffProvider.json
       eventHandlers:
         - event: AccountPositionProcessed(indexed address,indexed uint256,indexed
-            uint256,uint256,uint256,(int256,uint256,uint256,uint256))
+            uint256,uint256,uint256,(int256,uint256,uint256,uint256)) # v2.0
           handler: handleAccountPositionProcessed
         - event: BeneficiaryUpdated(address)
           handler: handleBeneficiaryUpdated
@@ -302,7 +302,7 @@ templates:
         - event: ParameterUpdated((uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,bool,bool,bool))
           handler: handleParameterUpdated
         - event: PositionProcessed(indexed uint256,indexed
-            uint256,uint256,uint256,(uint256,uint256,int256,int256,int256,uint256,int256,int256,int256,uint256,int256,int256,int256,uint256,uint256,uint256))
+            uint256,uint256,uint256,(uint256,uint256,int256,int256,int256,uint256,int256,int256,int256,uint256,int256,int256,int256,uint256,uint256,uint256)) # v2.0
           handler: handlePositionProcessed
         - event: RewardClaimed(indexed address,uint256)
           handler: handleRewardClaimed
@@ -314,6 +314,12 @@ templates:
             address,uint256,uint256,uint256,uint256,int256,bool)
           handler: handleUpdated
           receipt: true
+        - event: PositionProcessed(indexed uint256,indexed
+            uint256,uint256,uint256,(int256,uint256,int256,int256,int256,uint256,int256,int256,int256,uint256,int256,int256,int256,uint256,uint256,uint256)) # v2.1
+          handler: handlePositionProcessed
+        - event: AccountPositionProcessed(indexed address,indexed uint256,indexed
+            uint256,uint256,uint256,(int256,uint256,int256,uint256)) # v2.1
+          handler: handleAccountPositionProcessed
       file: ./src/market.ts
   - kind: ethereum
     name: Vault
