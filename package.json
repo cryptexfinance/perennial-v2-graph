@@ -10,7 +10,7 @@
     "build:arbitrumSepolia": "mustache config/arbitrumSepolia.json subgraph.template.yaml > subgraph.yaml && graph build --network arbitrum-sepolia",
     "_deploy:arbitrumSepolia": "yarn build:arbitrumSepolia && graph deploy perennial-v2-arbitrumSepolia --version-label $npm_package_version --node $GRAPH_DEPLOY_NODE --deploy-key $GRAPH_DEPLOY_KEY --ipfs $GRAPH_DEPLOY_IPFS",
     "deploy:arbitrumSepolia": "dotenv -- yarn _deploy:arbitrumSepolia",
-    "build:arbitrum": "graph build --network arbitrum-one",
+    "build:arbitrum": "mustache config/arbitrum.json subgraph.template.yaml > subgraph.yaml && graph build --network arbitrum-one",
     "_deploy:arbitrum": "yarn build:arbitrum && graph deploy perennial-v2-arbitrum --version-label $npm_package_version --node $GRAPH_DEPLOY_NODE --deploy-key $GRAPH_DEPLOY_KEY --ipfs $GRAPH_DEPLOY_IPFS",
     "deploy:arbitrum": "dotenv -- yarn _deploy:arbitrum",
     "test": "graph test"
