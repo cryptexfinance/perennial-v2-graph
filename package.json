@@ -1,13 +1,13 @@
 {
   "name": "perennial-v2",
-  "version": "1.1.0-rc1",
+  "version": "1.1.0-rc2",
   "license": "UNLICENSED",
   "scripts": {
     "codegen": "graph codegen",
-    "build:arbitrumGoerli": "graph build --network arbitrum-goerli",
+    "build:arbitrumGoerli": "mustache config/arbitrumGoerli.json subgraph.template.yaml > subgraph.yaml && graph build --network arbitrum-goerli",
     "_deploy:arbitrumGoerli": "yarn build:arbitrumGoerli && graph deploy perennial-v2-arbitrumGoerli --version-label $npm_package_version --node $GRAPH_DEPLOY_NODE --deploy-key $GRAPH_DEPLOY_KEY --ipfs $GRAPH_DEPLOY_IPFS",
     "deploy:arbitrumGoerli": "dotenv -- yarn _deploy:arbitrumGoerli",
-    "build:arbitrumSepolia": "graph build --network arbitrum-sepolia",
+    "build:arbitrumSepolia": "mustache config/arbitrumSepolia.json subgraph.template.yaml > subgraph.yaml && graph build --network arbitrum-sepolia",
     "_deploy:arbitrumSepolia": "yarn build:arbitrumSepolia && graph deploy perennial-v2-arbitrumSepolia --version-label $npm_package_version --node $GRAPH_DEPLOY_NODE --deploy-key $GRAPH_DEPLOY_KEY --ipfs $GRAPH_DEPLOY_IPFS",
     "deploy:arbitrumSepolia": "dotenv -- yarn _deploy:arbitrumSepolia",
     "build:arbitrum": "graph build --network arbitrum-one",
@@ -22,6 +22,7 @@
     "dotenv-cli": "^7.3.0"
   },
   "devDependencies": {
-    "matchstick-as": "0.5.0"
+    "matchstick-as": "0.5.0",
+    "mustache": "^4.2.0"
   }
 }

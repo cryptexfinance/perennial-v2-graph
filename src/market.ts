@@ -8,8 +8,6 @@ import {
   Market,
   ParameterUpdated as ParameterUpdatedEvent,
   PositionProcessed as PositionProcessedEvent,
-  RewardClaimed as RewardClaimedEvent,
-  RewardUpdated as RewardUpdatedEvent,
   RiskParameterUpdated as RiskParameterUpdatedEvent,
   Updated as UpdatedEvent,
 } from '../generated/templates/Market/Market'
@@ -24,8 +22,6 @@ import {
   MarketInitialized,
   MarketParameterUpdated,
   PositionProcessed,
-  RewardClaimed,
-  RewardUpdated,
   RiskParameterUpdated,
   Updated,
   MarketAccountCheckpoint,
@@ -615,7 +611,7 @@ export function handleUpdated(event: UpdatedEvent): void {
   if (entity.protect && entity.collateral.lt(BigInt.zero())) {
     entity.liquidationFee = entity.collateral.abs()
   } else if (entity.protect) {
-    const local = market.try_locals1(event.params.account)
+    const local = market.try_locals(event.params.account)
     if (!local.reverted) entity.liquidationFee = local.value.protectionAmount
   }
 
@@ -975,31 +971,6 @@ export function handleInitialized(event: InitializedEvent): void {
   entity.save()
 }
 
-export function handleRewardClaimed(event: RewardClaimedEvent): void {
-  let entity = new RewardClaimed(event.transaction.hash.concatI32(event.logIndex.toI32()))
-  entity.market = event.address
-  entity.account = event.params.account
-  entity.amount = event.params.amount
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
-export function handleRewardUpdated(event: RewardUpdatedEvent): void {
-  let entity = new RewardUpdated(event.transaction.hash.concatI32(event.logIndex.toI32()))
-  entity.market = event.address
-  entity.newReward = event.params.newReward
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
 export function handleRiskParameterUpdated(event: RiskParameterUpdatedEvent): void {
   let entity = new RiskParameterUpdated(event.transaction.hash.concatI32(event.logIndex.toI32()))
   entity.market = event.address
@@ -1024,7 +995,8 @@ export function handleRiskParameterUpdated(event: RiskParameterUpdatedEvent): vo
   entity.newRiskParameter_pController_max = event.params.newRiskParameter.pController.max
   entity.newRiskParameter_minMargin = event.params.newRiskParameter.minMargin
   entity.newRiskParameter_minMaintenance = event.params.newRiskParameter.minMaintenance
-  entity.newRiskParameter_virtualTaker = event.params.newRiskParameter.virtualTaker
+  entity.newRiskParameter_virtualTaker = BigInt.zero()
+  entity.newRiskParameter_skewScale = event.params.newRiskParameter.skewScale
   entity.newRiskParameter_staleAfter = event.params.newRiskParameter.staleAfter
   entity.newRiskParameter_makerReceiveOnly = event.params.newRiskParameter.makerReceiveOnly
 

@@ -345,6 +345,7 @@ type RiskParameterUpdated @entity(immutable: true) {
   newRiskParameter_minMargin: BigInt! # uint256
   newRiskParameter_minMaintenance: BigInt! # uint256
   newRiskParameter_virtualTaker: BigInt! # uint256
+  newRiskParameter_skewScale: BigInt # uint256
   newRiskParameter_staleAfter: BigInt! # uint256
   newRiskParameter_makerReceiveOnly: Boolean! # bool
   blockNumber: BigInt!
@@ -377,7 +378,7 @@ type Updated @entity {
   orderFee: BigInt! # uint256
   delta: BigInt! # int256
   side: PositionSide!
-  liquidationFee: BigInt! # uint256
+  liquidationFee: BigInt # uint256
 }
 
 # Not immutable because we need to update the 'latest' value
@@ -757,10 +758,10 @@ type VaultUpdated @entity(immutable: true) {
 type MultiInvokerFeeCharged @entity(immutable: true) {
   id: Bytes!
   account: Bytes! # address
-  market: Bytes! # address
+  market: Bytes # address
   to: Bytes! # address
   amount: BigInt! # uint256
-  unwrap: Boolean!
+  unwrap: Boolean
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -774,29 +775,23 @@ type MultiInvokerInitialized @entity(immutable: true) {
   transactionHash: Bytes!
 }
 
-type MultiInvokerKeeperCall_Deprecated @entity(immutable: true) {
-  id: Bytes!
-  sender: Bytes! # address
-  gasUsed: BigInt! # uint256
-  multiplier: BigInt! # uint256
-  buffer: BigInt! # uint256
-  keeperFee: BigInt! # uint256
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
-}
-
 type MultiInvokerKeeperCall @entity(immutable: true) {
   id: Bytes!
   sender: Bytes! # address
-  applicableGas: BigInt! # uint256
-  applicableValue: BigInt! # uint256
-  baseFee: BigInt! # uint256
-  calldataFee: BigInt! # uint256
   keeperFee: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
+
+  # Deprecated v2.0 fields
+  gasUsed: BigInt # uint256
+  multiplier: BigInt # uint256
+  buffer: BigInt # uint256
+  # New for v2.1
+  applicableGas: BigInt # uint256
+  applicableValue: BigInt # uint256
+  baseFee: BigInt # uint256
+  calldataFee: BigInt # uint256
 }
 
 type MultiInvokerKeeperFeeCharged @entity(immutable: true) {
@@ -840,9 +835,9 @@ type MultiInvokerOrderPlaced @entity(immutable: false) {
   order_fee: BigInt! # uint256
   order_price: BigInt! # int256
   order_delta: BigInt! # int256
-  order_interfaceFee_amount: BigInt! # uint256
-  order_interfaceFee_receiver: Bytes! # address
-  order_interfaceFee_unwrap: Boolean! # uint256
+  order_interfaceFee_amount: BigInt # uint256
+  order_interfaceFee_receiver: Bytes # address
+  order_interfaceFee_unwrap: Boolean # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -947,6 +942,7 @@ type OracleProviderVersionFulfilled @entity(immutable: true) {
   id: Bytes!
   address: Bytes! # address
   version: BigInt! # uint256
+  valid: Boolean
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
