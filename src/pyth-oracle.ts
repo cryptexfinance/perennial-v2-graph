@@ -32,6 +32,8 @@ export function handleOracleProviderVersionFulfilled(event: OracleProviderVersio
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
 
+  entity.keeper = event.transaction.from
+
   entity.save()
 }
 
