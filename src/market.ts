@@ -1,5 +1,6 @@
 import { Address, BigInt, Bytes, ethereum } from '@graphprotocol/graph-ts'
 import {
+  OrderCreated as OrderCreatedEvent,
   AccountPositionProcessed as AccountPositionProcessedEvent,
   BeneficiaryUpdated as BeneficiaryUpdatedEvent,
   CoordinatorUpdated as CoordinatorUpdatedEvent,
@@ -31,6 +32,7 @@ import {
   MarketAccountCheckpoint,
   MarketVersionPrice,
   AccountGlobalAccumulator,
+  OrderCreated,
 } from '../generated/schema'
 import { accumulatorAccumulated, accumulatorIncrement, mul, div, fromBig18, BASE } from './utils/big6Math'
 import { latestPrice, magnitude, price, side } from './utils/position'
@@ -146,6 +148,9 @@ export function handleAccountPositionProcessed(event: AccountPositionProcessedEv
 
   const toVersionData = Market.bind(event.address).versions(event.params.toOracleVersion)
   const updateEvent = Updated.load(updatedId(event.address, event.params.account, event.params.toOracleVersion))
+  if (updateEvent !== null) {
+    entity.update = updateEvent.id
+  }
 
   if (toVersionData.valid) {
     entity.toVersionValid = true
@@ -304,6 +309,7 @@ export function updateMarketAccountPosition(
           marketAccountPosition.long,
           marketAccountPosition.short,
         )
+        checkpoint.update = updatedId(market, account, version)
         checkpoint.save()
       }
       if (currentMagnitude.gt(BigInt.zero()) && toMagnitude.equals(BigInt.zero())) {
@@ -318,6 +324,7 @@ export function updateMarketAccountPosition(
         checkpoint.transactionHash = event.transaction.hash
         checkpoint.side = currentSide // Use current side since the new side is zero
         checkpoint.startMagnitude = BigInt.zero()
+        checkpoint.update = updatedId(market, account, version)
         checkpoint.save()
       }
 
@@ -702,6 +709,40 @@ export function handleUpdated(event: UpdatedEvent): void {
   globalLatestPosition.pendingLong = globalPending.long
   globalLatestPosition.pendingShort = globalPending.short
   globalLatestPosition.save()
+}
+
+export function handleOrderCreated(event: OrderCreatedEvent): void {
+  const id = event.transaction.hash
+    .concat(event.address)
+    .concatI32(event.transactionLogIndex.toI32())
+    .concatI32(event.logIndex.toI32())
+  const entity = new OrderCreated(id)
+  const marketContract = Market.bind(event.address)
+
+  entity.market = event.address
+  entity.account = event.params.account
+  entity.version = event.params.version
+  entity.update = updatedId(event.address, event.params.account, event.params.version)
+
+  entity.order_maker = event.params.order.maker
+  entity.order_long = event.params.order.long
+  entity.order_short = event.params.order.short
+  entity.order_net = event.params.order.net
+  entity.order_skew = event.params.order.skew
+  entity.order_impact = event.params.order.impact
+  entity.order_utilization = event.params.order.utilization
+  entity.order_efficiency = event.params.order.efficiency
+  entity.order_fee = event.params.order.fee
+  entity.order_keeper = event.params.order.keeper
+  entity.collateral = event.params.collateral
+
+  entity.priceImpactFee = entity.order_fee.minus(mul(marketContract.parameter().positionFee, entity.order_fee))
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash
+
+  entity.save()
 }
 
 function latestMarketAccountPositionId(market: Address, account: Address): string {

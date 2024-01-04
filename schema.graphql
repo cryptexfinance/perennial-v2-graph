@@ -204,6 +204,7 @@ type AccountPositionProcessed @entity(immutable: true) {
   size: BigInt!
   collateral: BigInt!
   priceImpactFee: BigInt!
+  update: Updated # market:account:version
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -377,6 +378,32 @@ type Updated @entity {
   orderFee: BigInt! # uint256
   delta: BigInt! # int256
   side: PositionSide!
+  orders: [OrderCreated!] @derivedFrom(field: "update")
+  accountPositionProcessed: AccountPositionProcessed
+    @derivedFrom(field: "update")
+}
+
+type OrderCreated @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  account: Bytes! # address
+  version: BigInt! # uint256
+  update: Updated! # market:account:version
+  order_maker: BigInt! # int256
+  order_long: BigInt! # int256
+  order_short: BigInt! # int256
+  order_net: BigInt! # int256
+  order_skew: BigInt! # int256
+  order_impact: BigInt! # int256
+  order_utilization: BigInt! # int256
+  order_efficiency: BigInt! # int256
+  order_fee: BigInt! # int256
+  order_keeper: BigInt! # uint256
+  collateral: BigInt! # int256
+  priceImpactFee: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
 }
 
 # Not immutable because we need to update the 'latest' value
@@ -502,6 +529,7 @@ type MarketAccountCheckpoint @entity {
   weightedMakerPositionFees: BigInt!
   totalWeight: BigInt!
 
+  update: Updated! # market:account:version
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -929,6 +957,7 @@ type OracleProviderVersionFulfilled @entity(immutable: true) {
   id: Bytes!
   address: Bytes! # address
   version: BigInt! # uint256
+  keeper: Bytes! # address
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
