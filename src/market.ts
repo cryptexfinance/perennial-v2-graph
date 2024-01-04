@@ -32,10 +32,11 @@ import { accumulatorAccumulated, accumulatorIncrement, mul, div, fromBig18, BASE
 import { latestPrice, magnitude, price, side } from './utils/position'
 import { SECONDS_PER_YEAR, updateBucketedVolumes } from './utils/volume'
 
-// event FeeCharged(address indexed account, address indexed to, UFixed6 amount)
-const INTERFACE_FEE_TOPIC = Bytes.fromHexString('0x945458c62aa39df7a4d87d6c4dbaaab7de5d870c9a1fe40e2b7571d84f158a8d')
-// event KeeperCall(address indexed sender, uint256 gasUsed, UFixed18 multiplier, uint256 buffer, UFixed18 keeperFee);
-const ORDER_FEE_TOPIC = Bytes.fromHexString('0xd7848cca80f0c7619e9c50ea855dd15779e356a791d0630001913eab6f7eaef7')
+// event InterfaceFeeCharged(address indexed account, IMarket indexed market, InterfaceFee fee);
+const INTERFACE_FEE_TOPIC_21 = Bytes.fromHexString('0x7bdf48e07cd0f3669b6ef1a2004307c0c28e2c22d70ae7a6d8e1ea1b42690591')
+
+// event  (address indexed sender, uint256 applicableGas, uint256 applicableValue, uint256 baseFee, uint256 calldataFee, uint256 keeperFee)
+const ORDER_FEE_TOPIC = Bytes.fromHexString('0xfa0333956d06e335c550bd5fc4ac9c003c6545e371331b1071fa4d5d8519d6c1')
 
 export function handleAccountPositionProcessed(event: AccountPositionProcessedEvent): void {
   let entity = new AccountPositionProcessed(event.transaction.hash.concatI32(event.logIndex.toI32()))
@@ -595,6 +596,8 @@ export function handleUpdated(event: UpdatedEvent): void {
   let entity = Updated.load(id)
   if (entity === null) {
     entity = new Updated(id)
+    entity.collateral = BigInt.zero()
+    entity.interfaceFee = BigInt.zero()
   }
   const market = Market.bind(event.address)
 
@@ -605,12 +608,10 @@ export function handleUpdated(event: UpdatedEvent): void {
   entity.newMaker = event.params.newMaker
   entity.newLong = event.params.newLong
   entity.newShort = event.params.newShort
-  entity.collateral = event.params.collateral
+  entity.collateral = entity.collateral.plus(event.params.collateral) // Collaterals are deltas, so future updates for the same version will add to this
   entity.protect = event.params.protect
   entity.liquidationFee = BigInt.zero()
-  if (entity.protect && entity.collateral.lt(BigInt.zero())) {
-    entity.liquidationFee = entity.collateral.abs()
-  } else if (entity.protect) {
+  if (entity.protect) {
     const local = market.try_locals(event.params.account)
     if (!local.reverted) entity.liquidationFee = local.value.protectionAmount
   }
@@ -649,30 +650,36 @@ export function handleUpdated(event: UpdatedEvent): void {
   entity.latestPrice = latestPrice(event.address) // Price at time of update, used for fee calcs
   entity.positionFee = pendingPosition.fee
   entity.priceImpactFee = BigInt.zero()
-  entity.interfaceFee = BigInt.zero()
   const receipt = event.receipt
+  let interfaceFee = BigInt.zero()
   if (receipt != null) {
-    let interfaceFee = BigInt.zero()
     let orderFee = BigInt.zero()
     // TODO: how do we handle if multiple interface fees are charged in one tx
     for (let i = 0; i < receipt.logs.length; i++) {
       const log = receipt.logs[i]
-      if (log.topics[0].equals(INTERFACE_FEE_TOPIC)) {
-        interfaceFee = interfaceFee.plus(BigInt.fromUnsignedBytes(Bytes.fromUint8Array(log.data.reverse())))
+      if (log.topics[0].equals(INTERFACE_FEE_TOPIC_21)) {
+        const decoded = ethereum.decode('(uint256,address,bool)', log.data)
+        if (decoded) {
+          const feeAmount = decoded.toTuple()[0].toBigInt()
+          // If the fee is equal to the collateral withdrawal, then it is an interface fee
+          if (feeAmount.equals(event.params.collateral.times(BigInt.fromI32(-1)))) {
+            interfaceFee = interfaceFee.plus(feeAmount)
+          }
+        }
       }
 
       if (log.topics[0].equals(ORDER_FEE_TOPIC)) {
-        const decoded = ethereum.decode('(uint256,uint256,uint256,uint256)', log.data)
+        const decoded = ethereum.decode('(uint256,uint256,uint256,uint256,uint256)', log.data)
         if (decoded) {
-          const feeAmount = fromBig18(decoded.toTuple()[3].toBigInt(), true)
+          const feeAmount = fromBig18(decoded.toTuple()[4].toBigInt(), true)
           // If the fee is equal to the collateral withdrawal, then it is an order fee
-          if (feeAmount.equals(entity.collateral.times(BigInt.fromI32(-1)))) {
+          if (feeAmount.equals(event.params.collateral.times(BigInt.fromI32(-1)))) {
             orderFee = feeAmount
           }
         }
       }
     }
-    entity.interfaceFee = interfaceFee
+    entity.interfaceFee = entity.interfaceFee.plus(interfaceFee)
     entity.orderFee = orderFee
   }
 
@@ -682,7 +689,7 @@ export function handleUpdated(event: UpdatedEvent): void {
   // All other fields are updated after settlement occurs
   latestPosition.netDeposits = latestPosition.netDeposits.plus(event.params.collateral)
   latestPosition.collateral = latestPosition.collateral.plus(event.params.collateral)
-  latestPosition.accumulatedInterfaceFees = latestPosition.accumulatedInterfaceFees.plus(entity.interfaceFee)
+  latestPosition.accumulatedInterfaceFees = latestPosition.accumulatedInterfaceFees.plus(interfaceFee)
   latestPosition.accumulatedOrderFees = latestPosition.accumulatedOrderFees.plus(entity.orderFee)
   latestPosition.pendingMaker = event.params.newMaker
   latestPosition.pendingLong = event.params.newLong

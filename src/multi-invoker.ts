@@ -26,6 +26,7 @@ export function handleInterfaceFeeCharged(event: InterfaceFeeChargedEvent): void
   entity.amount = event.params.fee.amount
   entity.unwrap = event.params.fee.unwrap
 
+  entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
 
