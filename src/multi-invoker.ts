@@ -130,9 +130,12 @@ export function handleOrderPlaced(event: OrderPlacedEvent): void {
   entity.order_fee = event.params.order.fee
   entity.order_price = event.params.order.price
   entity.order_delta = event.params.order.delta
-  entity.order_interfaceFee_amount = event.params.order.interfaceFee.amount
-  entity.order_interfaceFee_receiver = event.params.order.interfaceFee.receiver
-  entity.order_interfaceFee_unwrap = event.params.order.interfaceFee.unwrap
+  entity.order_interfaceFee_amount = event.params.order.interfaceFee1.amount
+  entity.order_interfaceFee_receiver = event.params.order.interfaceFee1.receiver
+  entity.order_interfaceFee_unwrap = event.params.order.interfaceFee1.unwrap
+  entity.order_interfaceFee2_amount = event.params.order.interfaceFee2.amount
+  entity.order_interfaceFee2_receiver = event.params.order.interfaceFee2.receiver
+  entity.order_interfaceFee2_unwrap = event.params.order.interfaceFee2.unwrap
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp

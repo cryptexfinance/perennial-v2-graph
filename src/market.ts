@@ -605,6 +605,7 @@ export function handleUpdated(event: UpdatedEvent): void {
     entity = new Updated(id)
     entity.collateral = BigInt.zero()
     entity.interfaceFee = BigInt.zero()
+    entity.orderFee = BigInt.zero()
   }
   const market = Market.bind(event.address)
 
@@ -687,7 +688,7 @@ export function handleUpdated(event: UpdatedEvent): void {
       }
     }
     entity.interfaceFee = entity.interfaceFee.plus(interfaceFee)
-    entity.orderFee = orderFee
+    entity.orderFee = entity.orderFee.plus(orderFee)
   }
 
   entity.save()

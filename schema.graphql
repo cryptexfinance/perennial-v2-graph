@@ -866,6 +866,9 @@ type MultiInvokerOrderPlaced @entity(immutable: false) {
   order_interfaceFee_amount: BigInt # uint256
   order_interfaceFee_receiver: Bytes # address
   order_interfaceFee_unwrap: Boolean # uint256
+  order_interfaceFee2_amount: BigInt # uint256
+  order_interfaceFee2_receiver: Bytes # address
+  order_interfaceFee2_unwrap: Boolean # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!

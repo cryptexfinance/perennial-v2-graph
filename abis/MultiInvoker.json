@@ -396,7 +396,29 @@
               }
             ],
             "internalType": "struct InterfaceFee",
-            "name": "interfaceFee",
+            "name": "interfaceFee1",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "UFixed6",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "receiver",
+                "type": "address"
+              },
+              {
+                "internalType": "bool",
+                "name": "unwrap",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct InterfaceFee",
+            "name": "interfaceFee2",
             "type": "tuple"
           }
         ],
@@ -685,7 +707,29 @@
               }
             ],
             "internalType": "struct InterfaceFee",
-            "name": "interfaceFee",
+            "name": "interfaceFee1",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "UFixed6",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "receiver",
+                "type": "address"
+              },
+              {
+                "internalType": "bool",
+                "name": "unwrap",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct InterfaceFee",
+            "name": "interfaceFee2",
             "type": "tuple"
           }
         ],

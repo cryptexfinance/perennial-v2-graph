@@ -187,8 +187,7 @@ dataSources:
           handler: handleOrderCancelled
         - event: OrderExecuted(indexed address,indexed address,uint256)
           handler: handleOrderExecuted
-        - event: OrderPlaced(indexed address,indexed address,indexed
-            uint256,(uint8,int8,uint256,int256,int256,(uint256,address,bool)))
+        - event: OrderPlaced(indexed address,indexed address,indexed uint256,(uint8,int8,uint256,int256,int256,(uint256,address,bool),(uint256,address,bool)))
           handler: handleOrderPlaced
       file: ./src/multi-invoker.ts
   - kind: ethereum
