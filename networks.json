@@ -34,11 +34,6 @@
       "address": "0x877682C7a8840D59A63a6227ED2Aeb20C3ae7FeB",
       "startBlock": 2252382
     },
-    "MultiInvoker_v2.0": {
-      "address": "0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579",
-      "startBlock": 2252386,
-      "endBlock": 2252386
-    },
     "MultiInvoker": {
       "address": "0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579",
       "startBlock": 2252386
