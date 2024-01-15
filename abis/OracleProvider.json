@@ -8,10 +8,27 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "uint256",
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "Fixed6",
+            "name": "price",
+            "type": "int256"
+          },
+          {
+            "internalType": "bool",
+            "name": "valid",
+            "type": "bool"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct OracleVersion",
         "name": "version",
-        "type": "uint256"
+        "type": "tuple"
       }
     ],
     "name": "OracleProviderVersionFulfilled",
@@ -111,6 +128,11 @@
   },
   {
     "inputs": [
+      {
+        "internalType": "contract IMarket",
+        "name": "market",
+        "type": "address"
+      },
       {
         "internalType": "address",
         "name": "account",

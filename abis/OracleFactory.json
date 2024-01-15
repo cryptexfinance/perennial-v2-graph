@@ -16,6 +16,27 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "version",
+        "type": "uint256"
+      }
+    ],
+    "name": "InitializableAlreadyInitializedError",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InitializableNotInitializingError",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InitializableZeroVersionError",
+    "type": "error"
+  },
+  {
     "inputs": [],
     "name": "OracleFactoryAlreadyCreatedError",
     "type": "error"
@@ -43,22 +64,12 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "version",
-        "type": "uint256"
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
       }
     ],
-    "name": "UInitializableAlreadyInitializedError",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "UInitializableNotInitializingError",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "UInitializableZeroVersionError",
+    "name": "OwnableNotOwnerError",
     "type": "error"
   },
   {
@@ -69,7 +80,7 @@
         "type": "address"
       }
     ],
-    "name": "UOwnableNotOwnerError",
+    "name": "OwnableNotPendingOwnerError",
     "type": "error"
   },
   {
@@ -80,23 +91,12 @@
         "type": "address"
       }
     ],
-    "name": "UOwnableNotPendingOwnerError",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      }
-    ],
-    "name": "UPausableNotPauserError",
+    "name": "PausableNotPauserError",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "UPausablePausedError",
+    "name": "PausablePausedError",
     "type": "error"
   },
   {
@@ -392,6 +392,16 @@
       {
         "internalType": "Token18",
         "name": "incentive_",
+        "type": "address"
+      },
+      {
+        "internalType": "Token6",
+        "name": "usdc_",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IEmptySetReserve",
+        "name": "reserve_",
         "type": "address"
       }
     ],
