@@ -1,22 +1,14 @@
 specVersion: 0.0.5
 schema:
   file: ./schema.graphql
-features:
-  - nonFatalErrors
-  {{#grafting}}- grafting{{/grafting}}
-{{#grafting}}
-graft:
-  base: {{ graftBase }}
-  block: {{ graftBlock }}
-{{/grafting}}
 dataSources:
   - kind: ethereum
     name: MarketFactory
-    network: arbitrum-one
+    network: arbitrum-sepolia
     source:
       abi: MarketFactory
-      address: "0xDaD8A103473dfd47F90168A0E46766ed48e26EC7"
-      startBlock: 135921706
+      address: "0x32F3aB7b3c5BBa0738b72FdB83FcE6bb1a1a943c"
+      startBlock: 2252368
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -59,11 +51,11 @@ dataSources:
       file: ./src/market-factory.ts
   - kind: ethereum
     name: OracleFactory
-    network: arbitrum-one
+    network: arbitrum-sepolia
     source:
       abi: OracleFactory
-      address: "0x8CDa59615C993f925915D3eb4394BAdB3feEF413"
-      startBlock: 135921387
+      address: "0x9d2CaE012AAe0aE00f4d8F42CD287a6923612456"
+      startBlock: 2252319
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -109,11 +101,11 @@ dataSources:
       file: ./src/oracle-factory.ts
   - kind: ethereum
     name: VaultFactory
-    network: arbitrum-one
+    network: arbitrum-sepolia
     source:
       abi: VaultFactory
-      address: "0xad3565680aEcEe27A39249D8c2D55dAc79BE5Ad0"
-      startBlock: 135921947
+      address: "0x877682C7a8840D59A63a6227ED2Aeb20C3ae7FeB"
+      startBlock: 2252382
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -153,11 +145,11 @@ dataSources:
       file: ./src/vault-factory.ts
   - kind: ethereum
     name: MultiInvoker
-    network: arbitrum-one
+    network: arbitrum-sepolia
     source:
       abi: MultiInvoker
-      address: "0x431603567EcBb4aa1Ce5a4fdBe5554cAEa658832"
-      startBlock: 135921999
+      address: "0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579"
+      startBlock: 2252386
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -192,11 +184,11 @@ dataSources:
       file: ./src/multi-invoker.ts
   - kind: ethereum
     name: PythFactory
-    network: arbitrum-one
+    network: arbitrum-sepolia
     source:
       abi: PythFactory
-      address: "0x9F35B78c6502e2B19D45Dc275f24462B0fa577B4"
-      startBlock: 135921431
+      address: "0x92F8d5B8d0ca2fc699c7c540471Ad49724a68007"
+      startBlock: 2252336
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -237,7 +229,7 @@ dataSources:
 templates:
   - kind: ethereum
     name: Market
-    network: arbitrum-one
+    network: arbitrum-sepolia
     source:
       abi: Market
     mapping:
@@ -290,7 +282,7 @@ templates:
       file: ./src/market.ts
   - kind: ethereum
     name: Vault
-    network: arbitrum-one
+    network: arbitrum-sepolia
     source:
       abi: Vault
     mapping:
@@ -320,7 +312,7 @@ templates:
       file: ./src/vault.ts
   - kind: ethereum
     name: PythOracle
-    network: arbitrum-one
+    network: arbitrum-sepolia
     source:
       abi: KeeperOracle
     mapping:
