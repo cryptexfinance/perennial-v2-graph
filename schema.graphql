@@ -377,8 +377,8 @@ type Updated @entity {
   priceImpactFee: BigInt! # uint256
   interfaceFee: BigInt! # uint256
   orderFee: BigInt! # uint256
-  delta: BigInt! # int256
-  side: PositionSide!
+  delta: BigInt # int256
+  side: PositionSide
   liquidationFee: BigInt # uint256
   orders: [OrderCreated!] @derivedFrom(field: "update")
   accountPositionProcessed: AccountPositionProcessed
@@ -477,9 +477,9 @@ type MarketAccountPosition @entity {
   openSize: BigInt!
   openNotional: BigInt!
   openPriceImpactFees: BigInt!
-  closeSize: BigInt!
-  closeNotional: BigInt!
-  closePriceImpactFees: BigInt!
+  closeSize: BigInt
+  closeNotional: BigInt
+  closePriceImpactFees: BigInt
   weightedFunding: BigInt!
   weightedInterest: BigInt!
   weightedMakerPositionFees: BigInt!
@@ -523,15 +523,15 @@ type MarketAccountCheckpoint @entity {
   openSize: BigInt!
   openNotional: BigInt!
   openPriceImpactFees: BigInt!
-  closeSize: BigInt!
-  closeNotional: BigInt!
-  closePriceImpactFees: BigInt!
+  closeSize: BigInt
+  closeNotional: BigInt
+  closePriceImpactFees: BigInt
   weightedFunding: BigInt!
   weightedInterest: BigInt!
   weightedMakerPositionFees: BigInt!
   totalWeight: BigInt!
 
-  update: Updated! # market:account:version
+  update: Updated # market:account:version
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -973,7 +973,7 @@ type OracleProviderVersionFulfilled @entity(immutable: true) {
   id: Bytes!
   address: Bytes! # address
   version: BigInt! # uint256
-  keeper: Bytes! # address
+  keeper: Bytes # address
   valid: Boolean
   blockNumber: BigInt!
   blockTimestamp: BigInt!

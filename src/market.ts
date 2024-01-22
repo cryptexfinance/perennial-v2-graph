@@ -281,12 +281,16 @@ export function updateMarketAccountPosition(
       // Add to close size and notional before checkpointing
       if (toMagnitude.lt(currentMagnitude)) {
         const delta = toMagnitude.minus(currentMagnitude).abs()
-        marketAccountPosition.closeSize = marketAccountPosition.closeSize.plus(delta)
+        let tempCloseSize = marketAccountPosition.closeSize
+        let closeSize = tempCloseSize ? tempCloseSize.plus(delta): BigInt.zero()
+        marketAccountPosition.closeSize = closeSize
         notionalVolume = mul(delta, getOrCreateMarketVersionPrice(market, version).abs())
-        marketAccountPosition.closeNotional = marketAccountPosition.closeNotional.plus(notionalVolume)
-        marketAccountPosition.closePriceImpactFees = marketAccountPosition.closePriceImpactFees.plus(
-          positionPrcessedEntity.priceImpactFee,
-        )
+        let tempCloseNotional = marketAccountPosition.closeNotional
+        let closeNotional = tempCloseNotional ? tempCloseNotional.plus(notionalVolume) : BigInt.zero()
+        marketAccountPosition.closeNotional = closeNotional
+        let tempClosePriceImpactFees = marketAccountPosition.closePriceImpactFees
+        let closePriceImpactFees = tempClosePriceImpactFees ? tempClosePriceImpactFees.plus(positionPrcessedEntity.priceImpactFee): BigInt.zero()
+        marketAccountPosition.closePriceImpactFees = closePriceImpactFees
       }
 
       if (currentMagnitude.equals(BigInt.zero()) && toMagnitude.gt(BigInt.zero())) {
