@@ -204,6 +204,7 @@ type AccountPositionProcessed @entity(immutable: true) {
   size: BigInt!
   collateral: BigInt!
   priceImpactFee: BigInt!
+  update: Updated # market:account:version
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -345,6 +346,7 @@ type RiskParameterUpdated @entity(immutable: true) {
   newRiskParameter_minMargin: BigInt! # uint256
   newRiskParameter_minMaintenance: BigInt! # uint256
   newRiskParameter_virtualTaker: BigInt! # uint256
+  newRiskParameter_skewScale: BigInt # uint256
   newRiskParameter_staleAfter: BigInt! # uint256
   newRiskParameter_makerReceiveOnly: Boolean! # bool
   blockNumber: BigInt!
@@ -375,6 +377,35 @@ type Updated @entity {
   priceImpactFee: BigInt! # uint256
   interfaceFee: BigInt! # uint256
   orderFee: BigInt! # uint256
+  delta: BigInt # int256
+  side: PositionSide
+  liquidationFee: BigInt # uint256
+  orders: [OrderCreated!] @derivedFrom(field: "update")
+  accountPositionProcessed: AccountPositionProcessed
+    @derivedFrom(field: "update")
+}
+
+type OrderCreated @entity(immutable: true) {
+  id: Bytes!
+  market: Bytes! # address
+  account: Bytes! # address
+  version: BigInt! # uint256
+  update: Updated! # market:account:version
+  order_maker: BigInt! # int256
+  order_long: BigInt! # int256
+  order_short: BigInt! # int256
+  order_net: BigInt! # int256
+  order_skew: BigInt! # int256
+  order_impact: BigInt! # int256
+  order_utilization: BigInt! # int256
+  order_efficiency: BigInt! # int256
+  order_fee: BigInt! # int256
+  order_keeper: BigInt! # uint256
+  collateral: BigInt! # int256
+  priceImpactFee: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
 }
 
 # Not immutable because we need to update the 'latest' value
@@ -412,6 +443,7 @@ enum PositionSide {
   maker
   long
   short
+  none
 }
 
 type MarketAccountPosition @entity {
@@ -445,6 +477,9 @@ type MarketAccountPosition @entity {
   openSize: BigInt!
   openNotional: BigInt!
   openPriceImpactFees: BigInt!
+  closeSize: BigInt
+  closeNotional: BigInt
+  closePriceImpactFees: BigInt
   weightedFunding: BigInt!
   weightedInterest: BigInt!
   weightedMakerPositionFees: BigInt!
@@ -488,11 +523,15 @@ type MarketAccountCheckpoint @entity {
   openSize: BigInt!
   openNotional: BigInt!
   openPriceImpactFees: BigInt!
+  closeSize: BigInt
+  closeNotional: BigInt
+  closePriceImpactFees: BigInt
   weightedFunding: BigInt!
   weightedInterest: BigInt!
   weightedMakerPositionFees: BigInt!
   totalWeight: BigInt!
 
+  update: Updated # market:account:version
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -518,6 +557,53 @@ type MarketVersionPrice @entity(immutable: true) {
   market: Bytes! # address
   version: BigInt! # uint256
   price: BigInt! # uint256
+}
+
+type AccountGlobalAccumulator @entity {
+  id: String! # account
+  account: Bytes! # address
+  accumulatedMakerPnl: BigInt!
+  accumulatedMakerFunding: BigInt!
+  accumulatedMakerInterest: BigInt!
+  accumulatedMakerPositionFee: BigInt! # only if maker
+  accumulatedMakerValue: BigInt!
+  accumulatedMakerReward: BigInt!
+  accumulatedMakerCollateral: BigInt!
+
+  accumulatedLongPnl: BigInt!
+  accumulatedLongFunding: BigInt!
+  accumulatedLongInterest: BigInt!
+  accumulatedLongValue: BigInt!
+  accumulatedLongReward: BigInt!
+  accumulatedLongCollateral: BigInt!
+  longNotionalVolume: BigInt!
+  longTrades: BigInt!
+
+  accumulatedShortPnl: BigInt!
+  accumulatedShortFunding: BigInt!
+  accumulatedShortInterest: BigInt!
+  accumulatedShortValue: BigInt!
+  accumulatedShortReward: BigInt!
+  accumulatedShortCollateral: BigInt!
+  shortNotionalVolume: BigInt!
+  shortTrades: BigInt!
+
+  # Long + Short Values
+  accumulatedTakerPnl: BigInt!
+  accumulatedTakerFunding: BigInt!
+  accumulatedTakerInterest: BigInt!
+  accumulatedTakerValue: BigInt!
+  accumulatedTakerReward: BigInt!
+  accumulatedTakerCollateral: BigInt!
+  takerNotionalVolume: BigInt!
+  takerTrades: BigInt!
+
+  # net deposits can't be tagged with a side since we don't know which side the deposit is for
+  netDeposits: BigInt!
+
+  lastUpdatedVersion: BigInt!
+  lastUpdatedBlockNumber: BigInt!
+  lastUpdatedBlockTimestamp: BigInt!
 }
 
 enum Bucket {
@@ -700,8 +786,10 @@ type VaultUpdated @entity(immutable: true) {
 type MultiInvokerFeeCharged @entity(immutable: true) {
   id: Bytes!
   account: Bytes! # address
+  market: Bytes # address
   to: Bytes! # address
   amount: BigInt! # uint256
+  unwrap: Boolean
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -718,13 +806,20 @@ type MultiInvokerInitialized @entity(immutable: true) {
 type MultiInvokerKeeperCall @entity(immutable: true) {
   id: Bytes!
   sender: Bytes! # address
-  gasUsed: BigInt! # uint256
-  multiplier: BigInt! # uint256
-  buffer: BigInt! # uint256
   keeperFee: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
+
+  # Deprecated v2.0 fields
+  gasUsed: BigInt # uint256
+  multiplier: BigInt # uint256
+  buffer: BigInt # uint256
+  # New for v2.1
+  applicableGas: BigInt # uint256
+  applicableValue: BigInt # uint256
+  baseFee: BigInt # uint256
+  calldataFee: BigInt # uint256
 }
 
 type MultiInvokerKeeperFeeCharged @entity(immutable: true) {
@@ -753,7 +848,6 @@ type MultiInvokerOrderExecuted @entity(immutable: true) {
   account: Bytes! # address
   market: Bytes! # address
   nonce: BigInt! # uint256
-  positionId: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -769,6 +863,12 @@ type MultiInvokerOrderPlaced @entity(immutable: false) {
   order_fee: BigInt! # uint256
   order_price: BigInt! # int256
   order_delta: BigInt! # int256
+  order_interfaceFee_amount: BigInt # uint256
+  order_interfaceFee_receiver: Bytes # address
+  order_interfaceFee_unwrap: Boolean # uint256
+  order_interfaceFee2_amount: BigInt # uint256
+  order_interfaceFee2_receiver: Bytes # address
+  order_interfaceFee2_unwrap: Boolean # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -873,6 +973,8 @@ type OracleProviderVersionFulfilled @entity(immutable: true) {
   id: Bytes!
   address: Bytes! # address
   version: BigInt! # uint256
+  keeper: Bytes # address
+  valid: Boolean
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!

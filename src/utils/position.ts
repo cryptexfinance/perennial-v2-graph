@@ -6,7 +6,8 @@ import { PayoffProvider } from '../../generated/templates/Market/PayoffProvider'
 export function side(maker: BigInt, long: BigInt, short: BigInt): string {
   if (maker.gt(BigInt.zero())) return 'maker'
   if (long.gt(BigInt.zero())) return 'long'
-  return 'short'
+  if (short.gt(BigInt.zero())) return 'short'
+  return 'none'
 }
 
 export function magnitude(maker: BigInt, long: BigInt, short: BigInt): BigInt {

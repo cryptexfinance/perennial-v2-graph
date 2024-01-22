@@ -33,17 +33,17 @@
         "type": "uint256"
       }
     ],
-    "name": "UInitializableAlreadyInitializedError",
+    "name": "InitializableAlreadyInitializedError",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "UInitializableNotInitializingError",
+    "name": "InitializableNotInitializingError",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "UInitializableZeroVersionError",
+    "name": "InitializableZeroVersionError",
     "type": "error"
   },
   {
@@ -54,7 +54,7 @@
         "type": "address"
       }
     ],
-    "name": "UOwnableNotOwnerError",
+    "name": "OwnableNotOwnerError",
     "type": "error"
   },
   {
@@ -65,7 +65,7 @@
         "type": "address"
       }
     ],
-    "name": "UOwnableNotPendingOwnerError",
+    "name": "OwnableNotPendingOwnerError",
     "type": "error"
   },
   {
@@ -76,12 +76,12 @@
         "type": "address"
       }
     ],
-    "name": "UPausableNotPauserError",
+    "name": "PausableNotPauserError",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "UPausablePausedError",
+    "name": "PausablePausedError",
     "type": "error"
   },
   {

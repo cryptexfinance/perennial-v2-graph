@@ -1,9 +1,8 @@
 import {
   Initialized as InitializedEvent,
-  KeeperCall as KeeperCallEvent,
   OracleProviderVersionFulfilled as OracleProviderVersionFulfilledEvent,
   OracleProviderVersionRequested as OracleProviderVersionRequestedEvent,
-} from '../generated/templates/PythOracle/PythOracle'
+} from '../generated/templates/PythOracle/KeeperOracle'
 import {
   PythOracleInitialized,
   PythOracleKeeperCall,
@@ -23,30 +22,17 @@ export function handleInitialized(event: InitializedEvent): void {
   entity.save()
 }
 
-export function handleKeeperCall(event: KeeperCallEvent): void {
-  let entity = new PythOracleKeeperCall(event.transaction.hash.concatI32(event.logIndex.toI32()))
-  entity.address = event.address
-  entity.sender = event.params.sender
-  entity.gasUsed = event.params.gasUsed
-  entity.multiplier = event.params.multiplier
-  entity.buffer = event.params.buffer
-  entity.keeperFee = event.params.keeperFee
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
-
 export function handleOracleProviderVersionFulfilled(event: OracleProviderVersionFulfilledEvent): void {
   let entity = new OracleProviderVersionFulfilled(event.transaction.hash.concatI32(event.logIndex.toI32()))
   entity.address = event.address
-  entity.version = event.params.version
+  entity.version = event.params.version.timestamp
+  entity.valid = event.params.version.valid
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
+
+  entity.keeper = event.transaction.from
 
   entity.save()
 }

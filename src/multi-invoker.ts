@@ -1,11 +1,11 @@
-import { Address, BigInt, ByteArray, Bytes, crypto } from '@graphprotocol/graph-ts'
+import { Address, BigInt, Bytes, crypto } from '@graphprotocol/graph-ts'
 import {
-  FeeCharged as FeeChargedEvent,
+  InterfaceFeeCharged as InterfaceFeeChargedEvent,
   Initialized as InitializedEvent,
   KeeperCall as KeeperCallEvent,
   KeeperFeeCharged as KeeperFeeChargedEvent,
-  OrderCancelled as OrderCancelledEvent,
   OrderExecuted as OrderExecutedEvent,
+  OrderCancelled as OrderCancelledEvent,
   OrderPlaced as OrderPlacedEvent,
 } from '../generated/MultiInvoker/MultiInvoker'
 import {
@@ -18,11 +18,13 @@ import {
   MultiInvokerOrderPlaced,
 } from '../generated/schema'
 
-export function handleFeeCharged(event: FeeChargedEvent): void {
+export function handleInterfaceFeeCharged(event: InterfaceFeeChargedEvent): void {
   let entity = new MultiInvokerFeeCharged(event.transaction.hash.concatI32(event.logIndex.toI32()))
   entity.account = event.params.account
-  entity.to = event.params.to
-  entity.amount = event.params.amount
+  entity.market = event.params.market
+  entity.to = event.params.fee.receiver
+  entity.amount = event.params.fee.amount
+  entity.unwrap = event.params.fee.unwrap
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
@@ -45,9 +47,10 @@ export function handleInitialized(event: InitializedEvent): void {
 export function handleKeeperCall(event: KeeperCallEvent): void {
   let entity = new MultiInvokerKeeperCall(event.transaction.hash.concatI32(event.logIndex.toI32()))
   entity.sender = event.params.sender
-  entity.gasUsed = event.params.gasUsed
-  entity.multiplier = event.params.multiplier
-  entity.buffer = event.params.buffer
+  entity.applicableGas = event.params.applicableGas
+  entity.applicableValue = event.params.applicableValue
+  entity.baseFee = event.params.baseFee
+  entity.calldataFee = event.params.calldataFee
   entity.keeperFee = event.params.keeperFee
 
   entity.blockNumber = event.block.number
@@ -103,7 +106,6 @@ export function handleOrderExecuted(event: OrderExecutedEvent): void {
   entity.account = event.params.account
   entity.market = event.params.market
   entity.nonce = event.params.nonce
-  entity.positionId = event.params.positionId
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
@@ -128,6 +130,12 @@ export function handleOrderPlaced(event: OrderPlacedEvent): void {
   entity.order_fee = event.params.order.fee
   entity.order_price = event.params.order.price
   entity.order_delta = event.params.order.delta
+  entity.order_interfaceFee_amount = event.params.order.interfaceFee1.amount
+  entity.order_interfaceFee_receiver = event.params.order.interfaceFee1.receiver
+  entity.order_interfaceFee_unwrap = event.params.order.interfaceFee1.unwrap
+  entity.order_interfaceFee2_amount = event.params.order.interfaceFee2.amount
+  entity.order_interfaceFee2_receiver = event.params.order.interfaceFee2.receiver
+  entity.order_interfaceFee2_unwrap = event.params.order.interfaceFee2.unwrap
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp

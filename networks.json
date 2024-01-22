@@ -21,6 +21,28 @@
       "startBlock": 41721940
     }
   },
+  "arbitrum-sepolia": {
+    "MarketFactory": {
+      "address": "0x32F3aB7b3c5BBa0738b72FdB83FcE6bb1a1a943c",
+      "startBlock": 2252368
+    },
+    "OracleFactory": {
+      "address": "0x9d2CaE012AAe0aE00f4d8F42CD287a6923612456",
+      "startBlock": 2252319
+    },
+    "VaultFactory": {
+      "address": "0x877682C7a8840D59A63a6227ED2Aeb20C3ae7FeB",
+      "startBlock": 2252382
+    },
+    "MultiInvoker": {
+      "address": "0x1927DE7c9765Ae74050D1d0aa8BB0e93D737F579",
+      "startBlock": 2252386
+    },
+    "PythFactory": {
+      "address": "0x92F8d5B8d0ca2fc699c7c540471Ad49724a68007",
+      "startBlock": 2252336
+    }
+  },
   "arbitrum-one": {
     "MarketFactory": {
       "address": "0xDaD8A103473dfd47F90168A0E46766ed48e26EC7",
@@ -39,8 +61,8 @@
       "startBlock": 135921999
     },
     "PythFactory": {
-      "address": "0x9F35B78c6502e2B19D45Dc275f24462B0fa577B4",
-      "startBlock": 135921431
+      "address": "0x6b60e7c96B4d11A63891F249eA826f8a73Ef4E6E",
+      "startBlock": 170734121
     }
   }
 }
